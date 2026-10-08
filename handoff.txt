@@ -713,3 +713,6 @@ OCTOBER 8, 2026: GIT INITIALIZATION AND ACCEPTED SEQUENCING
 
 - User authorized an initial commit and push to public GitHub repository c-earth/hyohakusha. Initial snapshot includes eligible project files under the established .gitignore. GitHub CLI is unavailable and the browser requires user sign-in; remote creation/push are pending. Commit author uses c-earth with existing configured email c_earth@mit.edu. No firmware/controller changes or hardware operations performed.
 
+
+- Completed GitHub publication: created public https://github.com/c-earth/hyohakusha, configured origin, and pushed initial commit e13226e on main. Git reported successful new-branch publication and upstream tracking of origin/main. The earlier sign-in/remote/push pending note is resolved. Initial commit contains 39 files; ignored bulk folders remain local. This completion record is being committed separately to keep the published initial commit unchanged.
+
