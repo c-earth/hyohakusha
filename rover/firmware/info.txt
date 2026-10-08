@@ -1,0 +1,12 @@
+1 degree camera pan control
+
+Camera: default setting, Wi-Fi channel 9.
+Camera source: downloaded vendor source; not verified against installed firmware.
+Camera build/esp32/flash.bin: full 8 MB readback from board, offset 0, read at 2026-10-08T03:52:27.1146738+00:00.
+Camera build settings:
+// WARNING!!! Make sure that you have selected Board ---> ESP32S3 Dev Module
+//            USB CDC On Boot ---> Enabled
+//            Flash Size ---> 8MB(64Mb)
+//            Partition Scheme ---> 8M with spiffs (3MB APP/1.5MB SPIFFS)
+//            PSRAM ---> OPI PSRAM
+

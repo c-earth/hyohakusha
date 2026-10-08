@@ -1,0 +1,24 @@
+# Local Python environments and caches
+/.venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Captures and future derived datasets
+/data/
+
+# Installed toolchains and retained external packages
+/tools/
+/rover/vendor/
+
+# Hardware backups and generated firmware builds
+/rover/backups/
+/rover/firmware/build/
+
+# Future generated output folders
+/build/
+/dist/
+/logs/
+/outputs/
+/node_modules/

@@ -1,0 +1,13 @@
+{
+  "camera_pan": {
+    "forward_command_degrees": 100,
+    "last_commanded_degrees": 100,
+    "increasing_angle_direction": "left",
+    "reference_firmware_step_degrees": 10,
+    "installed_command_step_degrees": 1,
+    "firmware_uploaded_date": "2026-10-07",
+    "status": "provisional_user_visual_alignment",
+    "calibrated_date": "2026-10-07",
+    "notes": "User judged 100 degrees straight ahead; 90 slightly right, 120 well left. No measured physical angle. Fine-pan firmware uploaded and verified; startup may reset angle, so last_commanded_degrees is historical. Recheck after mounting changes or reset."
+  }
+}

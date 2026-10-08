@@ -1,0 +1,715 @@
+ELEGOO rover project handoff
+Prepared: October 8, 2026, America/New_York
+Workspace: D:\projects\hyohakusha
+
+PURPOSE OF THIS HANDOFF
+
+Resume the project with its current instructions, files, and user decisions.
+This is a session snapshot, not standing authorization to perform the proposed
+next steps. Read AGENTS.md first. Read README.md for project facts and usage,
+and WORKFLOW.md for the proposed decision flow and agent hierarchy.
+
+The current request authorizes rereading the whole handoff, review with three
+subagents, and updating this file with evidence and ordered next steps. The user
+also granted continuing authorization to update this handoff as authorized tasks
+are completed. No roadmap implementation, test, dependency installation,
+simulation, or hardware session is authorized merely by its inclusion here.
+
+PROJECT GOAL AND CURRENT STAGE
+
+Connect an AI agent to an ELEGOO Smart Robot Car V4.0 for manual control, then
+bounded exploration of an accessible surface and 3D reconstruction of the
+interior visible to the camera.
+
+Existing implementation: two PowerShell scripts for keyboard driving, sensor
+readings, JPEG recording, timed movement, standby, and camera pan tests.
+Future proposals: shared rover interface, coordinated session logging,
+observation/state estimation, reconstruction, planning, and autonomous motion.
+The proposed controller and agent roles in WORKFLOW.md are not an implemented
+runtime architecture. The Python environment exists, but no project Python
+control or reconstruction application has been created in the work recorded here.
+
+Accepted architecture in the current conversation: retain PowerShell for rover
+control; use a separate vision/reconstruction component. Its language, processing
+method, and live communication boundary remain undecided. A Python migration of
+rover control is not planned. No shared interface has been implemented.
+
+IMPORTANT USER INSTRUCTIONS
+
+AGENTS.md contains the user's response, evidence, authorization, clarification,
+context, and coding requirements. Read the actual file rather than relying on
+this summary. In particular:
+
+- Be concise and direct. For yes/no questions, start Yes, No, or Unknown.
+- Separate verified findings, assumptions, and proposals. Withdraw unsupported
+  claims explicitly. Do not invent capabilities, checks, or user preferences.
+- Informational requests authorize inspection/explanation only. File changes,
+  code execution, tests, installations, and simulations need explicit scope.
+- Focused read-only project inspection is allowed. All Python execution needs
+  explicit authorization, even if used for inspection.
+- Reading outside the project workspace requires explicit authorization.
+- Do not treat your own plan as approval. Do not ask again within an already
+  authorized scope. Ask and wait when material scope or intent is ambiguous.
+- Use proper object-oriented code, import ordering, and descriptive docstrings
+  as specified in AGENTS.md.
+- Use one main agent. Subagents require the user's explicit delegation request.
+- Keep a single owner of the rover TCP connection.
+
+The user wants AGENTS.md to contain instructions useful to the agent, not
+setup history, repetitive reminders, personal preference guesses, or lengthy
+project facts already retrievable from README. Do not expand it back into a
+handoff or troubleshooting history without a request.
+
+CURRENT ROOT AND FILE ROLES
+
+.venv/       Project Python virtual environment.
+data/        Existing camera capture sessions.
+rover/       Firmware, backups, calibration, and retained vendor package.
+src/         Project PowerShell scripts grouped by purpose.
+tools/       Local Arduino toolchain and separate esptool package installation.
+AGENTS.md    Standing agent instructions and retrieval pointers.
+README.md    User-facing project description, structure, usage, and provenance.
+WORKFLOW.md  Proposed workflow, Mermaid diagrams, and development sequence.
+handoff.txt  This session snapshot, newly created at the user's request.
+
+The previous handoff was explicitly removed in the previous chat. The present
+file is newly authorized; it does not restore the old file's unsupported claims.
+
+COMPLETED IN THE PREVIOUS CHAT (HISTORICAL)
+
+1. Organized src:
+   src/control/keyboard-rover.ps1
+   src/tools/rover.ps1
+   Updated the recording path calculation after moving rover.ps1 so captures
+   still go to the project root's data/captures. Updated README commands.
+
+2. Reviewed file placement across the pre-venv inventory: 4,935 files, including
+   hidden files, 318 retained vendor files, and 4,527 installed tool files.
+   This was a placement/dependency review, not a line-by-line correctness audit
+   of every third-party implementation. Do not report that old count as current;
+   creating .venv and documentation changed the inventory afterward.
+
+3. Fixed active UNO .vscode/arduino.json:
+   board = arduino:avr:uno
+   sketch = uno.ino
+   Removed stale COM13 and AVRISP mkII entries. No replacement port hardcoded.
+
+4. Removed vendor temporary Word lock file:
+   rover/vendor/ELEGOO Smart Robot Car Kit V4.0 2023.02.01/
+   03 Tutorial & Code/02 SmartRobotCarV4.0_Move/~$nquerorCar_Move.docx
+   It was a lock/owner file, not a tutorial document.
+
+5. Fixed six vendor .vscode/arduino.json sketch references, changing only the
+   sketch filename to the .ino file actually present:
+   - WROVER camera example: ESP32_CameraServer_AP_20210107.ino ->
+     ESP32_CameraServer_AP_20220120.ino
+   - Obstacle DRV8835 Demo2 and TB6612 Demo2:
+     ConquerorCar.ino -> Demo2.ino
+   - Follow DRV8835 Demo1 and TB6612 Demo1:
+     ConquerorCar.ino -> Demo1.ino
+   - DIY/App SmartRobotCarV4.0_V1_20220303:
+     SmartRobotCarV4.0_V1_20201229.ino -> SmartRobotCarV4.0_V1_20220303.ino
+   No source code was missing; editor configurations had outdated names.
+
+6. Rewrote README to match current script locations, confirmed S3 hardware,
+   calibration path, firmware/source/readback distinctions, capture behavior,
+   tools, and retained vendor package. Removed obsolete archive references.
+
+7. Created Python .venv using the latest installed interpreter found, 3.13.13.
+   The user meant newest on this computer, not newest public release.
+   A downloaded 3.14.8 installer was never installed. Removed its tools/python
+   directory after the user explicitly requested cleanup.
+
+8. Created AGENTS.md with the user's supplied rules, then removed redundant
+   README facts and unnecessary session history at the user's direction.
+
+9. Created WORKFLOW.md with decision process, hierarchy, runtime loop, and
+   proposed implementation stages. Added a retrieval reference in AGENTS.md.
+
+10. Extended this handoff through stages 0-10 and final project completion
+    criteria. Updated AGENTS.md to retrieve this handoff and maintain it as
+    authorized tasks finish. Verified the saved retrieval and maintenance
+    instructions by read-only text inspection. No roadmap stage has been
+    completed by these documentation changes.
+
+ACCEPTED AS-IS: DO NOT REOPEN AS CLEANUP PROBLEMS
+
+- Active UNO source retains SmartRobotCarV4.0_V1_20230201.hex and addLibrary ZIPs.
+  The user explicitly said this is not a problem. Identical copies were found
+  in rover/backups/20261007183240988/src/uno, including addLibrary.
+- Active UNO .vscode/c_cpp_properties.json retains old third-party installation
+  paths. The user explicitly said this is not a problem. It was not changed.
+- Existing capture filenames vary. The user did NOT establish a preferred
+  frame000000.jpg format. An earlier handoff's preference claim was withdrawn.
+- Firmware readback/source provenance, differing backup times, and unimplemented
+  future features are facts, not cleanup problems the user asked to fix.
+- Keep the retained ELEGOO vendor package. Do not delete it as obsolete just
+  because it contains other board variants or older WROVER examples.
+
+PYTHON ENVIRONMENT
+
+.venv/pyvenv.cfg currently records:
+  version: 3.13.13
+  base executable: D:\local\python\python_3_13_13\python.exe
+  include-system-site-packages: false
+
+Use .venv\Scripts\python.exe for authorized project Python work and
+.venv\Scripts\python.exe -m pip for authorized dependency operations.
+Optional PowerShell activation: .\.venv\Scripts\Activate.ps1
+
+Earlier checks found local Python 3.9.25, local 3.13.13, and the bundled runtime
+3.12.14. This is historical evidence, not a current exhaustive system inventory.
+
+The initial venv creation failed in ensurepip because the sandbox blocked
+temporary-file access. Explicitly approved execution outside the sandbox
+completed pip setup. Python 3.13.13, distinct venv/base prefixes, and pip 26.0.1
+were then verified. Reverification is not automatically authorized.
+
+tools/esptool remains separate, installed for the bundled Python 3.12 runtime.
+It includes cp312 native extensions. Do not inject it into Python 3.13's
+PYTHONPATH. No migration or reinstall into .venv has been requested.
+
+ROVER AND FIRMWARE CONTEXT
+
+Confirmed hardware: ELEGOO V4.0, Arduino UNO, TB6612FNG, MPU6050, and
+ESP32-S3-WROOM-1 camera board with 8 MB flash and 8 MB PSRAM.
+Do not revive the earlier WROVER hardware assumption.
+
+Default network address 192.168.4.1; HTTP /status and /capture; MJPEG stream
+http://192.168.4.1:81/stream; TCP control port 100. The camera source uses
+Wi-Fi channel 9. Current Wi-Fi connectivity and serial port assignments are
+unknown. Historical COM3/COM5 assignments do not establish current ports.
+
+UNO source was patched and uploaded on October 7, 2026 for 1-degree N5 servo
+commands. Built-in modes retain their original servo interface.
+Active build/uno/flash.hex: compiled app, 31,068 data bytes.
+Active build/uno/eeprom.hex: compiler output, no EEPROM data.
+Backup build/uno/flash.hex: 32,768-byte original memory readback.
+Backup build/uno/eeprom.hex: 1,024-byte original memory readback.
+Fuse/lock settings were not backed up.
+
+Camera firmware was never written or erased by this project. Active and backup
+build/esp32/flash.bin are identical full 8 MB readbacks from offset 0, containing
+bootloader, partition table, application, and stored data. Downloaded S3 source
+is not proven to match installed firmware. See firmware/info.txt and README.
+
+Camera pan calibration: provisional command 100 degrees straight ahead,
+increasing commands turn left. Historical command values are not current-state
+feedback. Scripts do not load camera.json automatically.
+No motor encoders or servo angle feedback have been established.
+
+EXISTING SCRIPT BEHAVIOR
+
+keyboard-rover.ps1:
+- PowerShell 7 Windows Forms; starts disconnected and disarmed.
+- WASD/arrows; conflicting directions stop.
+- PWM 20-100, default 60.
+- Timed N2 T250 ms, renewed every 100 ms.
+- Key release, Space/Escape, focus loss, and close initiate stopping.
+- Heartbeat freshness handling; no automatic obstacle avoidance.
+- SelfTest returns before GUI/network setup.
+
+rover.ps1:
+- Actions Sensors, Record, Move, Stop, PanTest, FinePanTest.
+- Move requires EnableMovement, PWM 1-100, duration 50-500 ms.
+- Sensors reads ultrasound and three floor values using TCP responses.
+- Record uses HTTP capture and frame-000000.jpg-style filenames plus frames.csv.
+- PanTest 90 -> 100 -> 90; FinePanTest 100 -> 101 -> 100.
+- Pan tests capture center/pan/return JPEGs and attempt servo restoration.
+- Opening/closing a control connection can affect standby behavior.
+
+Read source before modifying behavior. Do not run these scripts to inspect them
+unless execution is authorized. Pan tests are physical servo operations.
+
+VERIFICATION ALREADY PERFORMED
+
+During the previous chat, before the standing authorization rules were added:
+- Both moved PowerShell scripts passed parser syntax checks.
+- Keyboard SelfTest passed, including from another working directory.
+- Capture path was checked against the project-root data/captures location.
+  An extracted-function test initially failed because its synthetic scriptblock
+  had no PSScriptRoot; a subsequent check substituted the real script directory
+  and confirmed path resolution. No live recording was used for this check.
+- Existing recording CSV entries referenced files present in their session.
+- Active/backup sketch names matched their folder names.
+- Local firmware header relationships were checked; external SDK headers were
+  distinguished from local source files. ESP32 SDK is not installed in the
+  local Arduino package tree; camera compilation was not verified.
+- UNO HEX files parsed successfully and data sizes above were read.
+- Active and backup ESP32 readbacks had identical SHA-256 hashes.
+- Esptool package manifest files and relocated launcher entries existed;
+  esptool version execution reported 5.4.0.
+- Six edited vendor sketch references and active UNO sketch reference resolved.
+- README's documented project paths were checked for existence.
+- New AGENTS and WORKFLOW files were read back. Mermaid rendering was not tested.
+- Venv Python and pip were verified after authorized pip setup.
+
+No rover network, wheel, servo, flash-write, or erase operations were performed
+in that previous chat. Historical physical verification must not be presented
+as a new test or proof of current connectivity.
+
+CURRENT CONVERSATION: PERMISSIONS AND READ-ONLY REVIEW
+
+- The user reported the rover was off. An explicitly authorized HTTP /status
+  request to 192.168.4.1:80 failed inside the sandbox with a socket access-
+  permissions error. The escalation approval was canceled; the outside-sandbox
+  request was not established as executed. This does not verify live connectivity.
+- The user wants approval for rover-control commands outside the sandbox to
+  persist for this project only. AGENTS.md is not a sandbox permission mechanism;
+  the earlier suggestion to solve this through AGENTS.md was withdrawn.
+- A project-local .codex/rules/rover.rules command-prefix allow rule was proposed.
+  No .codex directory was present in the inspected project root. No persistent
+  rule/configuration was created or verified. A remembered global user rule must
+  not be assumed project-only. Rules match command prefixes, not the semantic
+  category "all rover-related commands". A shared stable entry point is proposed
+  to make future rover actions use a narrow repeatable invocation.
+- The proposed src/control/RoverClient.psm1 is a possible shared module location,
+  not an implemented module or approved final file specification.
+- Three explicitly requested subagents reviewed firmware/sensors, host control,
+  and calibration/reconstruction prerequisites. They performed read-only project
+  inspection; only the main agent edited this handoff. No project code, firmware
+  builds, offline tests, simulations, sensor measurements, or hardware operations
+  were run for this review.
+
+SOURCE FINDINGS: NOT PHYSICAL MEASUREMENTS
+
+Firmware findings below refer to the inspected active UNO source and local AVR
+core. Camera findings refer to downloaded source, which remains unproven against
+the installed camera firmware. Do not call every quantization or design choice a
+calibration defect; distinguish code defects from accuracy requiring measurement.
+
+- DeviceDriverSet_xxx0.cpp:277-299 casts pulseIn's duration to unsigned int before
+  dividing by 58. On the UNO AVR target this narrows to 16 bits before conversion.
+  It truncates whole centimeters (not rounds up), clips computed values above
+  150 to 150, and gives no separate validity/saturation status. No-echo returns 0;
+  0 must not be interpreted as a verified zero-distance obstacle or free space.
+  Long pulse durations can wrap before division; no physical occurrence was
+  demonstrated. Host code cannot recover raw precision/status already discarded.
+- pulseIn has no explicit timeout in that driver. The installed AVR core header
+  tools/arduino/arduino-data/packages/arduino/hardware/avr/1.8.8/cores/arduino/
+  Arduino.h defines a default of 1,000,000 microseconds. Ultrasound queries run
+  synchronously in serial command handling, before timed-motion processing in
+  uno.ino. Blocking acquisition can therefore delay subsequent command/expiry
+  handling; actual motor overrun duration has not been measured.
+- ApplicationFunctionSet_xxx0.cpp:1198 onward: N2 expiry is loop-polled and T=0
+  bypasses its expiry condition. Firmware does not enforce the host's 50-500 ms
+  duration bounds. Review command validation and zero/missing/out-of-range fields
+  before treating host limits as a firmware guarantee.
+- N22 floor-query handling ends by setting CMD_Programming_mode (:1613), without
+  stopping motors there. N5 pan also changes functional mode (:1857). N2 expiry
+  runs only while CMD_CarControl_TimeLimit is active, so a query/pan can disable
+  that expiry path while previously set motor output may remain. This is a
+  critical source-level integration hazard; do not combine sensing/pan and motion
+  until expiry is independent of those mode changes or a verified restriction
+  prevents the hazard. No physical runaway/overrun was demonstrated.
+- N2's tagged acknowledgment is emitted after expiry invokes stopping, not on
+  receipt. N100 emits {ok} while parsing, before later motor-stop processing.
+  Neither reply establishes an observed physical stop; log their meanings
+  separately rather than treating every _ok/ok as command completion.
+- Straight-line motor control applies gyro correction to requested PWM and clamps
+  each output to 10-180 in timed/untimed command modes. A host request of PWM 60
+  is therefore not necessarily a per-wheel output cap of 60. Decide whether bounds
+  refer to requested PWM, actual motor output, or measured motion.
+- Floor values are raw ADC readings updated in the loop; N22 serializes cached
+  values without acquisition timestamps. Leave-ground detection uses fixed
+  thresholds. These are not measured distance or validated edge detection.
+- Voltage conversion uses ADC * 0.0375 plus 8% compensation. Its accuracy is
+  unverified; compare with a reference meter before relying on voltage decisions.
+  The low-voltage counter is not cleared on above-threshold readings, despite
+  its continuity comment (ApplicationFunctionSet_xxx0.cpp:328-345).
+- MPU6050 source provides gyro bias/yaw integration for motor correction. This
+  does not establish usable host IMU telemetry or calibrated localization.
+  MPU6050_getdata.cpp:34 has an uninitialized init retry counter; the caller does
+  not act on the reported init error. Calibration adds samples to existing gzo
+  without clearing it and uses integer division for the bias mean (:56-64).
+  Yaw integration uses floating point, but drops per-sample increments below
+  0.05 degrees (:75-79), making the deadband depend on sampling interval.
+  Calibration does not reset integration timing/angle; no IMU telemetry query
+  was found in the inspected command switch. These are source findings, not
+  measurements of current drift or a claim that all IMU arithmetic is integer.
+- UNO serial framing accumulates a String until a closing brace, without an
+  explicit receive-length cap or partial-frame expiry. Review malformed frames,
+  resynchronization, command validation and stop priority together.
+- Camera reference source forwards commands, sends heartbeats, and sends standby
+  on disconnect. That source behavior is not verified protection on the installed
+  camera. Stop effectiveness and latency require observed physical checks.
+
+Host findings from src/control/keyboard-rover.ps1 and src/tools/rover.ps1:
+- TCP, writes, parsing and lifecycle logic are duplicated. No cross-process
+  control ownership lock or coordinated command/sensor/capture log is implemented.
+- CLI Read-Rover discards other-tag responses, recreates its buffer per call, has
+  no receive-length cap, and checks its deadline outside the DataAvailable loop.
+  Persistent incoming data can postpone that check. Keyboard code limits input
+  per tick and partial-frame length but interprets only heartbeat replies.
+- Move asks the operator to verify sensors; it does not perform that verification,
+  wait for a movement acknowledgment, or measure physical motion/stopping.
+- CLI cleanup disposes TCP. Pan restoration failure can bypass the explicit
+  standby send; cleanup must attempt stopping independently of restoration.
+- Neither script loads camera.json. PanTest starts at 90, although provisional
+  forward alignment is 100. The pan tests are relative test sequences, not a
+  calibrated world-angle measurement.
+- Capture request/receipt timestamps are not exposure times. Pan captures lack
+  the recording timestamp manifest and its JPEG signature check. A historical
+  commanded pan angle is not measured present position.
+
+Saved-data inspection found four sessions and twelve JPEGs: one initial frame,
+five recording frames, and two three-image pan/return tests. Only the recording
+has frames.csv. No images were processed or visually assessed in this review.
+The inspected metadata establishes no translated camera poses, metric reference,
+intrinsic/distortion calibration, or sensor/wheel/IMU calibration results. Do not
+assume these images suffice for reconstruction or rename accepted filenames.
+
+WHAT TO DO NEXT: PROPOSED, NOT AUTHORIZED
+
+Next engineering milestone: resolve the firmware/protocol correctness and timing
+contract, decide essential corrections, and define their verification scope.
+The previous "shared interface first" recommendation was premature. Source review
+has begun, but corrections, builds, flashing and physical verification have not.
+Do not unconditionally flash the camera merely because its reference source was
+reviewed. Finish the prerequisite gates below before freezing the shared interface
+or trusting measurements for autonomous decisions.
+
+Start the next chat as follows:
+1. Read AGENTS.md, then relevant README and WORKFLOW sections.
+2. Establish the user's next requested action. If they ask to continue without
+   a defined scope, propose one concrete next action, file scope and reason.
+3. Explicitly distinguish permission to edit from permission to run offline
+   checks, install dependencies, use mocks/simulations, or contact the rover.
+4. Only inspect relevant files until those actions are authorized.
+
+Shared-interface scope after the firmware/protocol decision:
+- Define one object-oriented interface for connection/session lifecycle,
+  command encoding, brace-delimited response parsing, sensor retrieval, HTTP
+  capture, and standby.
+- Keep rover control in PowerShell (accepted). Proposed module location:
+  src/control/RoverClient.psm1. Agree integration and public entry-point scope;
+  separate vision/reconstruction technology is still open.
+- Keep the current working PowerShell entry points until their replacement or
+  integration is specifically requested. Do not remove or refactor them broadly.
+- Define a session record format that keeps requested commands, acknowledgments,
+  observations, request/receipt timestamps, and failure reasons separate.
+- Keep raw capture files usable and preserve current timestamp semantics.
+- Handle connection/read timeouts, malformed/partial responses, and cleanup
+  within the requested scope. Use bounded framing, request correlation and
+  monotonic deadlines; enforce one process owning TCP control. Attempt standby
+  independently of pan restoration or other cleanup failures.
+- Preserve raw replies plus explicit validity, clipping and unknown-state flags.
+  Load provisional camera alignment without representing it as measured pose.
+  Associate logs with firmware, camera settings and calibration identifiers.
+- Put command bounds in deterministic control code. Do not add continuous or
+  autonomous motion as an incidental feature.
+- Choose minimal dependencies only after need is established; installation is
+  a separate authorized action. Do not reuse Python 3.12 native wheels in .venv.
+- Discuss whether offline parser/encoding/error-path checks are authorized.
+  Mocks and simulations are not implicitly authorized by permission to edit.
+
+Suggested acceptance criteria for the explicitly authorized shared interface:
+- Clear class responsibilities and documented inputs, outputs, units, bounds.
+- Existing command semantics represented without unrequested firmware changes.
+- Partial and malformed responses handled predictably where implemented.
+- Session evidence distinguishes acknowledgments from physical measurements.
+- File paths resolve from the intended project layout.
+- No networking or motion occurs on import or ordinary offline verification.
+- Any authorized checks are reported accurately, including untested hardware.
+
+ROADMAP THROUGH THE PROJECT GOAL
+
+These stages extend through AI-controlled exploration and a usable interior
+reconstruction. They are a proposed sequence, not authorization to execute.
+Each stage must be scoped with the user and evaluated against actual evidence.
+Dependencies may require revisiting earlier stages; do not skip an unmet gate.
+
+STAGE 0: DEFINE THE FINAL OUTCOME AND OPERATING AREA
+
+Agree with the user on:
+- The accessible surface and its boundaries, including prohibited areas.
+- What counts as sufficient exploration coverage and when to stop exploring.
+- What interior surfaces the reconstruction must represent; restrict claims to
+  surfaces visible to the camera and reachable viewpoints.
+- Whether the deliverable needs metric dimensions or only relative geometry.
+- Required geometric accuracy, visual quality, tolerable gaps, and export format.
+- The intended level of supervision and the authorized operating duration.
+
+Inspect the existing source, calibration, and saved data to identify the evidence
+already available. Do not infer numeric accuracy or coverage targets.
+Completion gate: a defined target area, deliverable, and measurable criteria
+accepted by the user. These choices remain open at the time of this handoff.
+
+PREREQUISITE 0A: ESTABLISH PROJECT-SCOPED SANDBOX ACCESS
+
+Choose a stable explicit command invocation for each rover entry point. Propose
+the exact narrow prefix and project-local allow rule for review; configure only
+when authorized. A module by itself is not an executable entry point. Do not
+allow an unrestricted shell/interpreter merely to cover arbitrary future scripts.
+Keep routine unrelated commands under the existing sandbox approval policy.
+
+Completion gate: persistent rule location and matching invocation are verified
+in this project, repeat execution no longer prompts for matching commands, and
+unrelated invocations remain outside the grant. Rule checks/execution need their
+own authorization. Rover-off permission checks cannot prove live TCP/HTTP access;
+verify actual HTTP and control connectivity later with the rover on. Approval
+readiness does not prove sensor correctness, stopping or movement authorization.
+
+PREREQUISITE 0B: REVIEW AND CORRECT FIRMWARE/PROTOCOL FOUNDATIONS
+
+1. Complete a focused source audit of sensor data types/conversion, no-echo and
+   saturation semantics, acquisition blocking, IMU bias/timing, motor correction,
+   serial framing/validation, timed expiry, standby and link-loss behavior.
+2. Define what the host may rely on: units, raw/converted values, validity,
+   acquisition age, command bounds, acknowledgment meaning and stop guarantees.
+   Decide protocol compatibility/versioning before changing replies. Old scripts
+   must not silently interpret an incompatible new reading.
+3. Propose essential UNO corrections in the relevant driver/application files:
+   preserve pulse width before conversion; represent invalid/clipped data; bound
+   sensor acquisition and receive buffers; validate timed commands; make motor
+   expiry independent of query/pan mode changes; define applied PWM bounds and
+   stop priority; remove or bound operations that can starve stopping. Numeric
+   precision alone does not prove sensor accuracy. Exact schema/time budgets
+   remain design decisions.
+4. Separate code corrections from physical calibration: coefficient accuracy,
+   floor thresholds and motion response need measurements; do not invent them.
+   Decide whether IMU corrections/telemetry are actually required for the pilot.
+5. If authorized, edit, build and perform scoped offline checks. Preserve original
+   backups; verify board/build settings, flash size margin and recovery procedure.
+   Upload only within a separately defined hardware scope, record what was
+   uploaded, and retain the earlier 1-degree pan behavior where requested.
+6. Treat ESP32 changes as a separate decision. Establish build prerequisites and
+   installed-firmware behavior/provenance before replacing the unproven camera
+   source. No camera update is justified solely by source mismatch uncertainty.
+
+Completion gate: required fixes and compatibility contract are explicit; any
+chosen edits/builds are verified under their authorized scope. Physical validity
+and stopping gates remain open until stage 2. A documented host workaround may
+be used only where it handles uncertainty conservatively; it cannot recover raw
+data or eliminate blocking already occurring on the rover.
+
+STAGE 1: BUILD THE SHARED POWERSHELL ROVER INTERFACE
+
+Use the shared-interface scope above: object-oriented command/capture/sensor
+interface, single control-session ownership, deterministic action validation,
+and session logging against prerequisite 0B's contract. Language is PowerShell;
+integration scope and final files still require a concrete proposal. Preserve
+existing entry points. Implement enough evidence logging before calibration
+sessions to make the measurements reproducible. Keep firmware changes separate.
+
+Completion gate: the requested interface and offline behavior are verified using
+authorized checks, and its limitations are documented. It must not silently
+initiate networking or motion during imports or offline checks.
+
+STAGE 2: VERIFY LIVE CONTROL AND CALIBRATE SENSORS/MOTION
+
+Within an explicitly authorized hardware session:
+- Verify present camera, sensor, and control connectivity.
+- Measure response latency and observation age under the actual setup.
+- Exercise short wheel commands, servo commands, standby, and session closure
+  within agreed bounds. Record requested commands and observed outcomes.
+- Verify physical stop behavior and loss-of-control handling using a test
+  procedure agreed with the user; do not treat firmware acknowledgments as proof.
+- Establish which observations can detect obstacles, edges, or loss of tracking
+  in the intended operating area, and which hazards remain unobserved.
+- Start with stationary observation checks; only then perform bounded movement.
+  Check no-echo/clipped readings, sensor-query latency, delayed or malformed
+  responses, and their interaction with expiry/stop using an agreed procedure.
+  Specifically verify expiry/stop while ultrasound, floor and pan commands are
+  processed, after source-level hazards have been addressed. Do not use an
+  uncorrected mixed-command drive as an incidental calibration experiment.
+- Calibrate ultrasound against known distances and relevant targets/orientations;
+  record error, repeatability, invalid cases and useful range. Verify whether its
+  beam turns with camera pan before treating every range as straight ahead.
+- Characterize floor ADC ranges/polarity under intended floors and lighting;
+  verify any edge/leave-ground interpretation rather than assuming it is reliable.
+- If battery or IMU data will be used, verify reference voltage, stationary bias,
+  timing, drift, mounting axes and host telemetry availability as applicable.
+- Characterize movement deadband, forward/backward asymmetry, turn response,
+  coasting/braking, and dependence on floor/battery. Record requested PWM versus
+  actual outcomes; timed PWM remains insufficient evidence for reliable odometry.
+
+Completion gate: manual operations needed for the project produce usable records,
+and measured results support the agreed operating envelope. Unsupported actions
+remain unavailable to the autonomous planner.
+Relevant sensor/motion calibration results, invalidity handling and measured
+stopping limits must support that envelope; command acknowledgments do not.
+
+STAGE 3: ESTABLISH CAMERA CALIBRATION AND DATA QUALITY
+
+Determine what calibration the selected reconstruction method requires.
+If authorized, acquire suitable calibration imagery and estimate camera
+intrinsics and lens distortion. Establish image resolution, camera settings,
+mounting stability, and usable pan behavior. Use measured quantities only when
+the project actually needs them and there is an authorized way to obtain them.
+Recheck provisional 100-degree forward alignment after reset or mounting changes.
+Characterize permitted pan range, repeatability, backlash and settling; establish
+camera-to-rover geometry/physical pan angle only when required. Keep commanded
+angles distinct from measured pose and label absent position feedback explicitly.
+
+Define a capture plan with overlapping viewpoints and translational motion.
+Treat pan-only imagery as insufficient evidence for general depth recovery.
+Assess blur, exposure variation, texture, occlusion, and frame consistency.
+Record the calibration/settings used with each dataset.
+
+Completion gate: a dataset and calibration appropriate to the selected method,
+with known timing and image-quality limitations. If metric scale is required,
+identify and verify an authorized scale reference or measurement source.
+The pilot method and calibration requirements can be selected together; do not
+wait until processing to discover the capture lacks the required geometry.
+
+STAGE 4: PROVE OFFLINE RECONSTRUCTION ON A SMALL DATASET
+
+Select a reconstruction approach after examining the actual data and the user's
+deliverable criteria. Before installation or execution, obtain authorization
+for dependencies and experiments. Existing captures may be useful for inspection
+but should not be assumed sufficient for a full interior model.
+
+For an authorized pilot dataset:
+- Estimate camera poses and sparse geometry where supported.
+- Produce denser geometry, mesh, and texture only as required by the deliverable.
+- Compare results with input images and available reference measurements.
+- Record gaps, outliers, uncertain regions, scale ambiguity, and processing cost.
+- Preserve source images and distinguish raw data from derived artifacts.
+
+Completion gate: an inspectable pilot reconstruction meets the agreed small-area
+criteria. If it fails, correct capture/calibration or method selection before
+building exploration around it. Do not promise metric accuracy without evidence.
+
+STAGE 5: IMPLEMENT OBSERVATION AND STATE ESTIMATION
+
+Build the runtime observation role around the available camera and sensors.
+Choose pose estimation/localization and mapping methods supported by the pilot
+results. Account for the absence of established motor encoders and servo feedback;
+timed PWM commands alone do not measure traveled distance or camera pose.
+
+Represent observation timestamps, pose confidence/uncertainty, obstacle evidence,
+exploration coverage, and tracking loss explicitly. Decide how the system handles
+drift and revisiting locations, and whether additional hardware is necessary.
+Hardware additions remain proposals requiring the user's decision.
+
+Completion gate: authorized validation demonstrates that state estimates are
+usable within the chosen area, and stale observations or lost localization are
+detectable. If evidence is inadequate, the next stage stays supervised or blocked
+pending a defined improvement rather than assuming reliable localization.
+
+STAGE 6: IMPLEMENT BOUNDED ACTION PLANNING AND CONTROL
+
+Connect observation, planning, review, and the deterministic controller.
+The planner selects bounded actions; the controller checks operating bounds,
+command duration/PWM limits, observation freshness, and permitted action types.
+Use explicit stop conditions for task completion, user interruption, connection
+loss, insufficient evidence, and localization failure.
+
+Plan movement and viewpoints for accessible-surface coverage and useful camera
+overlap. Distinguish navigation coverage from visual coverage of the interior;
+visiting a floor region does not establish that every interior surface was seen.
+Define how the agent requests help when it cannot choose a supported action.
+
+Completion gate: authorized offline checks and supervised short trials verify
+planner/controller integration, bounded behavior, and failure handling within
+the approved envelope. Simulation is an optional authorized activity, not proof
+that physical rover behavior is correct.
+
+STAGE 7: RUN SUPERVISED END-TO-END EXPLORATION TRIALS
+
+Start in a small user-approved area with a defined duration and stop procedure.
+Run observe -> estimate -> plan -> validate -> act -> review loops. Record every
+action, acknowledgment, sensor result, capture, and termination reason.
+Review progress against agreed coverage and reconstruction criteria.
+
+Progressively expand trials only when authorized and supported by prior results.
+Check recovery from tracking loss, insufficient texture, blocked routes, repeated
+views, and connection interruptions where those tests are explicitly requested.
+Do not expand the operating area automatically after a successful trial.
+
+Completion gate: repeated authorized trials produce stable behavior and datasets
+that support reconstruction. Remaining failure modes are documented and addressed
+or accepted by the user before independent exploration.
+
+STAGE 8: EXPLORE THE AGREED AREA AT THE APPROVED AUTONOMY LEVEL
+
+Execute a defined session covering the target accessible surface and camera
+viewpoints needed for the model. Keep operating boundaries and duration fixed
+to the authorized scope. Monitor evidence quality and completeness during the
+session; stop or request help when supported progress is no longer possible.
+
+Finish using the authorized standby/disconnection procedure and preserve the
+complete dataset. Record unreachable regions, unseen surfaces, and why the
+session ended. Do not label an incomplete run complete solely because time ran out.
+
+Completion gate: coverage criteria are met, or the user explicitly accepts a
+documented reduced scope. Captured evidence is sufficient for the final processing
+stage according to the proven method.
+
+STAGE 9: BUILD AND VALIDATE THE FINAL INTERIOR RECONSTRUCTION
+
+Process the final dataset with the validated pipeline. Apply pose refinement,
+geometry cleanup, meshing, texturing, and scale alignment as required by the
+agreed output. Keep raw captures and processing parameters available.
+
+Validate against the stage-0 criteria:
+- Visual correspondence to the camera imagery.
+- Geometric consistency and reference measurements where available.
+- Coverage of the agreed visible interior surfaces.
+- Explicit representation or documentation of holes and uncertain regions.
+- Correct scale claims and successful opening of the requested export format.
+
+If criteria fail, identify whether additional viewpoints, calibration changes,
+or processing changes are needed. Obtain authorization for those actions rather
+than silently repeating a hardware session or accepting a lower-quality result.
+
+Completion gate: the final model meets the agreed quality and coverage targets,
+or deviations are explicitly accepted by the user.
+
+STAGE 10: DELIVER THE COMPLETE SYSTEM AND PROJECT RESULT
+
+Provide the working AI-control/exploration entry point, reproducible processing
+procedure, final 3D artifact in the agreed format, session records, and concise
+instructions for using them. Update README and workflow status when authorized
+so implemented features are distinguishable from future proposals.
+
+Report exactly what was verified, the operating conditions tested, and remaining
+limits. Provide an authorized end-to-end demonstration if requested. Do not
+delete intermediate evidence or backups as an incidental delivery cleanup.
+
+THE PROJECT GOAL IS COMPLETE WHEN:
+- The AI agent can operate the rover at the agreed autonomy/supervision level.
+- It can explore the agreed accessible surface within defined operating bounds.
+- Its captured data produces an inspectable 3D reconstruction of the agreed
+  camera-visible interior surfaces meeting the accepted quality criteria.
+- The user receives the model and usable, reproducible system with limitations
+  accurately documented.
+
+This roadmap does not assert that every stage is feasible with current hardware.
+Feasibility and any required changes must be established through the staged
+evidence gates rather than assumed at the outset.
+
+DOCUMENTATION NOTES FOR THE NEXT CHAT
+
+README was rewritten before .venv, AGENTS.md, and WORKFLOW.md were added. Its
+root structure listing does not currently list those additions, and it has no
+project .venv setup section. If the user requests documentation synchronization,
+update those parts; no such additional edit is authorized by creating this
+handoff. Do not call otherwise accepted files new cleanup problems.
+
+Only handoff.txt was edited for this review. README and WORKFLOW were not changed;
+WORKFLOW's interface-first summary is now less detailed than this revised order.
+Use this handoff's prerequisite gates and latest accepted PowerShell decision
+when resuming; synchronize other documentation only within an authorized scope.
+No roadmap gate is marked complete by this documentation update. Immediate next
+work is the concrete firmware/protocol correction proposal (prerequisite 0B),
+with project-only permission configuration tracked independently as 0A.
+
+AGENTS.md points to WORKFLOW.md and this handoff, and requires progress updates
+here as authorized tasks finish. Keep it focused on agent instructions.
+Detailed project facts belong in README or relevant info/config files; transient
+session context belongs here. The latest user corrections take precedence over
+any older snapshot or inferred preference.
+
+OCTOBER 8, 2026: GIT INITIALIZATION AND ACCEPTED SEQUENCING
+- User authorized git init in the existing hyohakusha project directory.
+- git init succeeded, creating D:/projects/hyohakusha/.git/. No commit, remote, or .gitignore was created.
+- User accepted non-overlapping drive -> stop -> sense/pan -> drive sequencing as the initial approach to the mode-change hazard. This restriction is not implemented or tested; it does not fix the underlying firmware defect.
+
+
+- User authorized ignoring folders that can grow. Added .gitignore for .venv, Python caches, data, installed tools, vendor packages, hardware backups, firmware build output, and future root build/dist/logs/outputs/node_modules folders. Source, documentation, and calibration remain eligible for tracking. Git check-ignore confirmed the six existing bulk folder rules; git status showed only eligible project paths. No files deleted and no commit created.
+
+
+- User authorized an initial commit and push to public GitHub repository c-earth/hyohakusha. Initial snapshot includes eligible project files under the established .gitignore. GitHub CLI is unavailable and the browser requires user sign-in; remote creation/push are pending. Commit author uses c-earth with existing configured email c_earth@mit.edu. No firmware/controller changes or hardware operations performed.
+
