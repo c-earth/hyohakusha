@@ -748,3 +748,12 @@ OCTOBER 8, 2026: HOST OWNS ULTRASOUND TIMEOUT VALIDATION
 OCTOBER 8, 2026: ULTRASOUND COMMIT AND PUSH
 - User authorized commit and push. Commit e890746 contains the ultrasound changes, host request update, documentation, and pending exact-editing instruction change in AGENTS.md. Untracked .codex/ excluded.
 - Push succeeded to origin/codex/sequential-rover-control with upstream tracking configured. No merge to main or firmware deployment performed. This publication record is committed separately.
+
+OCTOBER 8, 2026: REMOVE AVOIDANCE AND FOLLOWING MODES
+- User explicitly requested removal of obstacle-avoidance and following modes. Removed both application implementations/declarations, loop calls, enum entries, motor correction and LED cases, button and IR selection cases, and N101 D1=2/3 selection branches from active UNO source.
+- Set Rocker_mode explicitly to 4 to preserve the numeric values of remaining enum entries. Other mode identifiers and command selectors were not renumbered. Removed button/IR cases fall through existing defaults; no new stop/error behavior added. N101 D1=2/3 no longer changes mode but retains the existing {ok} reply.
+- Raw ultrasound driver and N21 host measurement/status paths remain. This supersedes earlier records that obstacle/follow modes remain in the modified source. Button counter cycle and IR decoding remain unchanged.
+- Updated README with removal and source/deployment distinction. Verified full application diff, declarations and loop diff, remaining-reference search (no removed mode/function names remain in active UNO source), and scoped whitespace check. No build, tests, upload, commit, push, or hardware operations performed for this removal. Installed firmware has not changed.
+
+OCTOBER 8, 2026: AVOIDANCE/FOLLOW REMOVAL PUBLICATION
+- User authorized one commit and one push of the five changed files for this removal. This record is included in that same commit; no separate publication-record commit is planned. Publication result will be reported in chat after execution.

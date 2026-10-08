@@ -70,9 +70,7 @@ enum SmartRobotCarFunctionalModel
 {
   Standby_mode,           /*Standby Mode*/
   TraceBased_mode,        /*Line Tracking Mode*/
-  ObstacleAvoidance_mode, /*Obstacle Avoidance Mode*/
-  Follow_mode,            /*Following Mode*/
-  Rocker_mode,            /*Rocker Control Mode*/
+  Rocker_mode = 4,            /*Rocker Control Mode*/
   CMD_inspect,
   CMD_Programming_mode,                   /*Programming Mode*/
   CMD_ClearAllFunctions_Standby_mode,     /*Clear All Functions And Enter Standby Mode*/
@@ -215,14 +213,6 @@ static void ApplicationFunctionSet_SmartRobotCarMotionControl(SmartRobotCarMotio
   case Rocker_mode:
     Kp = 10;
     UpperLimit = 255;
-    break;
-  case ObstacleAvoidance_mode:
-    Kp = 2;
-    UpperLimit = 180;
-    break;
-  case Follow_mode:
-    Kp = 2;
-    UpperLimit = 180;
     break;
   case CMD_CarControl_TimeLimit:
     Kp = 2;
@@ -520,18 +510,6 @@ void ApplicationFunctionSet::ApplicationFunctionSet_RGB(void)
         AppRBG_LED.DeviceDriverSet_RBGLED_xxx(0 /*Duration*/, 2 /*Traversal_Number*/, CRGB::Green);
       }
       break;
-    case /* constant-expression */ ObstacleAvoidance_mode:
-      /* code */
-      {
-        AppRBG_LED.DeviceDriverSet_RBGLED_xxx(0 /*Duration*/, 2 /*Traversal_Number*/, CRGB::Yellow);
-      }
-      break;
-    case /* constant-expression */ Follow_mode:
-      /* code */
-      {
-        AppRBG_LED.DeviceDriverSet_RBGLED_xxx(0 /*Duration*/, 2 /*Traversal_Number*/, CRGB::Blue);
-      }
-      break;
     case /* constant-expression */ Rocker_mode:
       /* code */
       {
@@ -633,186 +611,6 @@ void ApplicationFunctionSet::ApplicationFunctionSet_Tracking(void)
     BlindDetection = true;
     timestamp = true;
     MotorRL_time = 0;
-  }
-}
-
-/*
-  Obstacle Avoidance Mode
-*/
-void ApplicationFunctionSet::ApplicationFunctionSet_Obstacle(void)
-{
-  static boolean first_is = true;
-  if (Application_SmartRobotCarxxx0.Functional_Mode == ObstacleAvoidance_mode)
-  {
-    uint8_t switc_ctrl = 0;
-    unsigned long echoPulseUs;
-    if (Car_LeaveTheGround == false)
-    {
-      ApplicationFunctionSet_SmartRobotCarMotionControl(stop_it, 0);
-      return;
-    }
-    if (first_is == true) //Enter the mode for the first time, and modulate the steering gear to 90 degrees
-    {
-      AppServo.DeviceDriverSet_Servo_control(90 /*Position_angle*/);
-      first_is = false;
-    }
-
-    AppULTRASONIC.DeviceDriverSet_ULTRASONIC_Get(&echoPulseUs /*out*/, 1000000UL);
-    if (function_xxx(echoPulseUs, 0, 20))
-    {
-      ApplicationFunctionSet_SmartRobotCarMotionControl(stop_it, 0);
-
-      for (uint8_t i = 1; i < 6; i += 2) //1、3、5 Omnidirectional detection of obstacle avoidance status
-      {
-        AppServo.DeviceDriverSet_Servo_control(30 * i /*Position_angle*/);
-        delay_xxx(1);
-        AppULTRASONIC.DeviceDriverSet_ULTRASONIC_Get(&echoPulseUs /*out*/, 1000000UL);
-
-        if (function_xxx(echoPulseUs, 0, 20))
-        {
-          ApplicationFunctionSet_SmartRobotCarMotionControl(stop_it, 0);
-          if (5 == i)
-          {
-            ApplicationFunctionSet_SmartRobotCarMotionControl(Backward, 150);
-            delay_xxx(500);
-            ApplicationFunctionSet_SmartRobotCarMotionControl(Right, 150);
-            delay_xxx(50);
-            first_is = true;
-            break;
-          }
-        }
-        else
-        {
-          switc_ctrl = 0;
-          switch (i)
-          {
-          case 1:
-            ApplicationFunctionSet_SmartRobotCarMotionControl(Right, 150);
-            break;
-          case 3:
-            ApplicationFunctionSet_SmartRobotCarMotionControl(Forward, 150);
-            break;
-          case 5:
-            ApplicationFunctionSet_SmartRobotCarMotionControl(Left, 150);
-            break;
-          }
-          delay_xxx(50);
-          first_is = true;
-          break;
-        }
-      }
-    }
-    else //if (function_xxx(echoPulseUs, 20, 50))
-    {
-      ApplicationFunctionSet_SmartRobotCarMotionControl(Forward, 150);
-    }
-  }
-  else
-  {
-    first_is = true;
-  }
-}
-
-/*
-  Following mode：
-*/
-void ApplicationFunctionSet::ApplicationFunctionSet_Follow(void)
-{
-  static unsigned long ULTRASONIC_Get = 0;
-  static unsigned long ULTRASONIC_time = 0;
-  static uint8_t Position_Servo = 1;
-  static uint8_t timestamp = 3;
-  static uint8_t OneCycle = 1;
-  if (Application_SmartRobotCarxxx0.Functional_Mode == Follow_mode)
-  {
-
-    if (Car_LeaveTheGround == false)
-    {
-      ApplicationFunctionSet_SmartRobotCarMotionControl(stop_it, 0);
-      return;
-    }
-    AppULTRASONIC.DeviceDriverSet_ULTRASONIC_Get(&ULTRASONIC_Get /*out*/, 1000000UL);
-    if (false == function_xxx(ULTRASONIC_Get, 0, 20)) //Raw echo duration outside the unchanged 0–20 threshold?
-    {
-      ApplicationFunctionSet_SmartRobotCarMotionControl(stop_it, 0);
-      static unsigned long time_Servo = 0;
-      static uint8_t Position_Servo_xx = 0;
-
-      if (timestamp == 3)
-      {
-        if (Position_Servo_xx != Position_Servo) //Act on servo motor：avoid loop execution
-        {
-          Position_Servo_xx = Position_Servo; //Act on servo motor：rotation angle record
-
-          if (Position_Servo == 1)
-          {
-            time_Servo = millis();
-            AppServo.DeviceDriverSet_Servo_control(80 /*Position_angle*/);
-          }
-          else if (Position_Servo == 2)
-          {
-            time_Servo = millis();
-            AppServo.DeviceDriverSet_Servo_control(20 /*Position_angle*/);
-          }
-          else if (Position_Servo == 3)
-          {
-            time_Servo = millis();
-            AppServo.DeviceDriverSet_Servo_control(80 /*Position_angle*/);
-          }
-          else if (Position_Servo == 4)
-          {
-            time_Servo = millis();
-            AppServo.DeviceDriverSet_Servo_control(150 /*Position_angle*/);
-          }
-        }
-      }
-      else
-      {
-        if (timestamp == 1)
-        {
-          timestamp = 2;
-          time_Servo = millis();
-        }
-      }
-      if (millis() - time_Servo > 1000) //Act on servo motor：stop at the current location for 2s
-      {
-        timestamp = 3;
-        Position_Servo += 1;
-        OneCycle += 1;
-        if (OneCycle > 4)
-        {
-          Position_Servo = 1;
-          OneCycle = 5;
-        }
-      }
-    }
-    else
-    {
-      OneCycle = 1;
-      timestamp = 1;
-      if ((Position_Servo == 1))
-      { /*Move forward*/
-        ApplicationFunctionSet_SmartRobotCarMotionControl(Forward, 100);
-      }
-      else if ((Position_Servo == 2))
-      { /*Turn right*/
-        ApplicationFunctionSet_SmartRobotCarMotionControl(Right, 150);
-      }
-      else if ((Position_Servo == 3))
-      {
-        /*Move forward*/
-        ApplicationFunctionSet_SmartRobotCarMotionControl(Forward, 100);
-      }
-      else if ((Position_Servo == 4))
-      { /*Turn left*/
-        ApplicationFunctionSet_SmartRobotCarMotionControl(Left, 150);
-      }
-    }
-  }
-  else
-  {
-    ULTRASONIC_Get = 0;
-    ULTRASONIC_time = 0;
   }
 }
 
@@ -1636,14 +1434,6 @@ void ApplicationFunctionSet::ApplicationFunctionSet_KeyCommand(void)
       /* code */
       Application_SmartRobotCarxxx0.Functional_Mode = TraceBased_mode;
       break;
-    case /* constant-expression */ 2:
-      /* code */
-      Application_SmartRobotCarxxx0.Functional_Mode = ObstacleAvoidance_mode;
-      break;
-    case /* constant-expression */ 3:
-      /* code */
-      Application_SmartRobotCarxxx0.Functional_Mode = Follow_mode;
-      break;
     case /* constant-expression */ 4:
       /* code */
       Application_SmartRobotCarxxx0.Functional_Mode = Standby_mode;
@@ -1690,12 +1480,6 @@ void ApplicationFunctionSet::ApplicationFunctionSet_IRrecv(void)
       break;
     case /* constant-expression */ 6:
       /* code */ Application_SmartRobotCarxxx0.Functional_Mode = TraceBased_mode;
-      break;
-    case /* constant-expression */ 7:
-      /* code */ Application_SmartRobotCarxxx0.Functional_Mode = ObstacleAvoidance_mode;
-      break;
-    case /* constant-expression */ 8:
-      /* code */ Application_SmartRobotCarxxx0.Functional_Mode = Follow_mode;
       break;
     case /* constant-expression */ 9:
       /* code */ if (Application_SmartRobotCarxxx0.Functional_Mode == TraceBased_mode) //Adjust the threshold of the line tracking module to adapt the actual environment
@@ -1934,14 +1718,6 @@ void ApplicationFunctionSet::ApplicationFunctionSet_SerialPortDataAnalysis(void)
         if (1 == doc["D1"])
         {
           Application_SmartRobotCarxxx0.Functional_Mode = TraceBased_mode;
-        }
-        else if (2 == doc["D1"])
-        {
-          Application_SmartRobotCarxxx0.Functional_Mode = ObstacleAvoidance_mode;
-        }
-        else if (3 == doc["D1"])
-        {
-          Application_SmartRobotCarxxx0.Functional_Mode = Follow_mode;
         }
 
 #if _is_print

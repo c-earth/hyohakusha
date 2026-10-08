@@ -94,8 +94,11 @@ default 30,000). The modified UNO source passes `T` from N21 requests directly
 to the measurement handler, leaving validation to the host, and reports raw pulse duration
 for `D1=2`; zero means timeout. These source changes have not been built or uploaded,
 so the installed firmware still uses the earlier centimeter reply contract.
-Built-in obstacle/follow logic and status thresholds retain their numeric values
-and now compare raw microseconds in the modified source.
+Built-in obstacle-avoidance and following modes have been removed from the
+modified UNO source, including button, IR, and N101 selection paths. N101 now
+selects only line tracking (`D1=1`); `D1=2/3` leave the mode unchanged but retain
+the existing `{ok}` reply. The N21 status threshold retains its numeric value
+and now compares raw microseconds in the modified source.
 `Record` downloads JPEG frames. `Stop` sends the standby command.
 The camera reference source sends standby when a TCP control connection closes,
 so a sensor session may also put the rover in standby.
