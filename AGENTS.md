@@ -32,6 +32,7 @@ Read `README.md` for project usage and structure, and relevant `info.txt` files 
 
 # Clarification
 
+- Follow editing instructions exactly. Before editing, verify that the requested target and stated condition match the actual file. If they do not match, explain the mismatch and ask for clarification; wait for an explicit answer before editing. Do not reinterpret the request as a different change, even if that change seems useful or consistent with an inferred intent.
 - When ambiguity affects intent, scope, correctness, instrument behavior, or an irreversible decision, ask and wait for an explicit answer before acting.
 - Once implementation is explicitly authorized, use reasonable judgment for minor, reversible choices within that scope and disclose material implementation choices.
 

@@ -30,7 +30,7 @@ public:
   void ApplicationFunctionSet_IRrecv(void);
 
 public: /*CMD*/
-  void CMD_UltrasoundModuleStatus_xxx0(uint8_t is_get);
+  void CMD_UltrasoundModuleStatus_xxx0(uint8_t is_get, unsigned long timeoutUs);
   void CMD_TraceModuleStatus_xxx0(uint8_t is_get);
   void CMD_Car_LeaveTheGround_xxx0(uint8_t is_get);
 
@@ -57,8 +57,7 @@ public: /*CMD*/
 private:
   /*Sensor Raw Value*/
   volatile float VoltageData_V;        //Battery Voltage Value
-  volatile uint16_t UltrasoundData_mm; //Ultrasonic Sensor Value (mm)
-  volatile uint16_t UltrasoundData_cm; //Ultrasonic Sensor Value (cm)
+  unsigned long UltrasoundPulse_us; //Raw echo duration in microseconds; zero means timeout.
   volatile int TrackingData_L;         //Line Tracking Module Value (Left)
   volatile int TrackingData_M;         //Line Tracking Module Value (Middle)
   volatile int TrackingData_R;         //Line Tracking Module Value (Right)

@@ -347,8 +347,8 @@ void ApplicationFunctionSet::ApplicationFunctionSet_SensorDataUpdate(void)
   }
 
   // { /*value updation for the ultrasonic sensor：for the Obstacle Avoidance mode*/
-  //   AppULTRASONIC.DeviceDriverSet_ULTRASONIC_Get(&UltrasoundData_cm /*out*/);
-  //   UltrasoundDetectionStatus = function_xxx(UltrasoundData_cm, 0, ObstacleDetection);
+  //   AppULTRASONIC.DeviceDriverSet_ULTRASONIC_Get(&UltrasoundPulse_us /*out*/, 1000000UL);
+  //   UltrasoundDetectionStatus = function_xxx(UltrasoundPulse_us, 0, ObstacleDetection);
   // }
 
   { /*value updation for the IR sensors on the line tracking module：for the line tracking mode*/
@@ -645,7 +645,7 @@ void ApplicationFunctionSet::ApplicationFunctionSet_Obstacle(void)
   if (Application_SmartRobotCarxxx0.Functional_Mode == ObstacleAvoidance_mode)
   {
     uint8_t switc_ctrl = 0;
-    uint16_t get_Distance;
+    unsigned long echoPulseUs;
     if (Car_LeaveTheGround == false)
     {
       ApplicationFunctionSet_SmartRobotCarMotionControl(stop_it, 0);
@@ -657,8 +657,8 @@ void ApplicationFunctionSet::ApplicationFunctionSet_Obstacle(void)
       first_is = false;
     }
 
-    AppULTRASONIC.DeviceDriverSet_ULTRASONIC_Get(&get_Distance /*out*/);
-    if (function_xxx(get_Distance, 0, 20))
+    AppULTRASONIC.DeviceDriverSet_ULTRASONIC_Get(&echoPulseUs /*out*/, 1000000UL);
+    if (function_xxx(echoPulseUs, 0, 20))
     {
       ApplicationFunctionSet_SmartRobotCarMotionControl(stop_it, 0);
 
@@ -666,9 +666,9 @@ void ApplicationFunctionSet::ApplicationFunctionSet_Obstacle(void)
       {
         AppServo.DeviceDriverSet_Servo_control(30 * i /*Position_angle*/);
         delay_xxx(1);
-        AppULTRASONIC.DeviceDriverSet_ULTRASONIC_Get(&get_Distance /*out*/);
+        AppULTRASONIC.DeviceDriverSet_ULTRASONIC_Get(&echoPulseUs /*out*/, 1000000UL);
 
-        if (function_xxx(get_Distance, 0, 20))
+        if (function_xxx(echoPulseUs, 0, 20))
         {
           ApplicationFunctionSet_SmartRobotCarMotionControl(stop_it, 0);
           if (5 == i)
@@ -702,7 +702,7 @@ void ApplicationFunctionSet::ApplicationFunctionSet_Obstacle(void)
         }
       }
     }
-    else //if (function_xxx(get_Distance, 20, 50))
+    else //if (function_xxx(echoPulseUs, 20, 50))
     {
       ApplicationFunctionSet_SmartRobotCarMotionControl(Forward, 150);
     }
@@ -718,7 +718,7 @@ void ApplicationFunctionSet::ApplicationFunctionSet_Obstacle(void)
 */
 void ApplicationFunctionSet::ApplicationFunctionSet_Follow(void)
 {
-  static uint16_t ULTRASONIC_Get = 0;
+  static unsigned long ULTRASONIC_Get = 0;
   static unsigned long ULTRASONIC_time = 0;
   static uint8_t Position_Servo = 1;
   static uint8_t timestamp = 3;
@@ -731,8 +731,8 @@ void ApplicationFunctionSet::ApplicationFunctionSet_Follow(void)
       ApplicationFunctionSet_SmartRobotCarMotionControl(stop_it, 0);
       return;
     }
-    AppULTRASONIC.DeviceDriverSet_ULTRASONIC_Get(&ULTRASONIC_Get /*out*/);
-    if (false == function_xxx(ULTRASONIC_Get, 0, 20)) //There is no obstacle 20 cm ahead?
+    AppULTRASONIC.DeviceDriverSet_ULTRASONIC_Get(&ULTRASONIC_Get /*out*/, 1000000UL);
+    if (false == function_xxx(ULTRASONIC_Get, 0, 20)) //Raw echo duration outside the unchanged 0–20 threshold?
     {
       ApplicationFunctionSet_SmartRobotCarMotionControl(stop_it, 0);
       static unsigned long time_Servo = 0;
@@ -1511,13 +1511,13 @@ void ApplicationFunctionSet::CMD_ClearAllFunctions_xxx0(void)
 
 /*
   N21:command
-  CMD mode：The ultrasonic module receives and feeds back the status and ranging data according to the control command of APP terminal.
+  CMD mode：The ultrasonic module receives and feeds back status and raw echo duration in microseconds.
   Input：
 */
-void ApplicationFunctionSet::CMD_UltrasoundModuleStatus_xxx0(uint8_t is_get)
+void ApplicationFunctionSet::CMD_UltrasoundModuleStatus_xxx0(uint8_t is_get, unsigned long timeoutUs)
 {
-  AppULTRASONIC.DeviceDriverSet_ULTRASONIC_Get(&UltrasoundData_cm /*out*/); //Ultrasonic data
-  UltrasoundDetectionStatus = function_xxx(UltrasoundData_cm, 0, ObstacleDetection);
+  AppULTRASONIC.DeviceDriverSet_ULTRASONIC_Get(&UltrasoundPulse_us /*out*/, timeoutUs); //Raw echo duration in microseconds
+  UltrasoundDetectionStatus = function_xxx(UltrasoundPulse_us, 0, ObstacleDetection);
   if (1 == is_get) //ultrasonic sensor  is_get Start     true：has obstacle / false: no obstable
   {
     if (true == UltrasoundDetectionStatus)
@@ -1535,8 +1535,8 @@ void ApplicationFunctionSet::CMD_UltrasoundModuleStatus_xxx0(uint8_t is_get)
   }
   else if (2 == is_get) //ultrasonic sensor is_get data
   {
-    char toString[10];
-    sprintf(toString, "%d", UltrasoundData_cm);
+    char toString[11];
+    sprintf(toString, "%lu", UltrasoundPulse_us);
 #if _is_print
     Serial.print('{' + CommandSerialNumber + '_' + toString + '}');
 #endif
@@ -1887,8 +1887,8 @@ void ApplicationFunctionSet::ApplicationFunctionSet_SerialPortDataAnalysis(void)
 #endif
         break;
 
-      case 21: /*<Command：N 21>：ultrasonic sensor: detect obstacle distance */
-        CMD_UltrasoundModuleStatus_xxx0(doc["D1"]);
+      case 21: /*<Command：N 21>：ultrasonic sensor: raw echo duration; T is timeout in microseconds */
+        CMD_UltrasoundModuleStatus_xxx0(doc["D1"], doc["T"]);
 #if _is_print
         //Serial.print('{' + CommandSerialNumber + "_ok}");
 #endif

@@ -6,7 +6,8 @@ param(
     [ValidateSet('Forward','Backward','Left','Right')][string]$Direction = 'Forward',
     [ValidateRange(1,100)][int]$Speed = 60,
     [ValidateRange(50,500)][int]$DurationMs = 200,
-    [switch]$EnableMovement
+    [switch]$EnableMovement,
+    [ValidateRange(1,1000000)][int]$UltrasoundTimeoutUs = 30000
 )
 $ErrorActionPreference = 'Stop'
 function New-CaptureFolder {
@@ -70,9 +71,11 @@ try {
         throw "No response for $tag. Installed firmware may differ from the stock reference."
     }
     if ($Action -eq 'Sensors') {
-        foreach ($item in @(@('ultrasound_cm',21,2),@('floor_left',22,0),@('floor_middle',22,1),@('floor_right',22,2))) {
+        foreach ($item in @(@('ultrasound_us',21,2),@('floor_left',22,0),@('floor_middle',22,1),@('floor_right',22,2))) {
             $tag = [string]$item[0]
-            Send-Rover (@{N=$item[1];D1=$item[2];H=$tag} | ConvertTo-Json -Compress)
+            $command = @{N=$item[1];D1=$item[2];H=$tag}
+            if ($item[1] -eq 21) { $command.T = $UltrasoundTimeoutUs }
+            Send-Rover ($command | ConvertTo-Json -Compress)
             $result = Read-Rover $tag
             Write-Output "$tag=$result"
         }

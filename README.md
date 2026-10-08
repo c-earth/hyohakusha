@@ -88,8 +88,15 @@ pwsh -NoProfile -File ./src/control/keyboard-rover.ps1 -SelfTest
 ./src/tools/rover.ps1 -Action Stop
 ```
 
-`Sensors` reads ultrasound distance in centimeters and the three floor sensor
-values. `Record` downloads JPEG frames. `Stop` sends the standby command.
+`Sensors` requests raw ultrasound echo duration in microseconds and the three floor
+sensor values. `-UltrasoundTimeoutUs` sets the requested timeout (1–1,000,000 µs;
+default 30,000). The modified UNO source passes `T` from N21 requests directly
+to the measurement handler, leaving validation to the host, and reports raw pulse duration
+for `D1=2`; zero means timeout. These source changes have not been built or uploaded,
+so the installed firmware still uses the earlier centimeter reply contract.
+Built-in obstacle/follow logic and status thresholds retain their numeric values
+and now compare raw microseconds in the modified source.
+`Record` downloads JPEG frames. `Stop` sends the standby command.
 The camera reference source sends standby when a TCP control connection closes,
 so a sensor session may also put the rover in standby.
 

@@ -129,7 +129,7 @@ public:
 #if _Test_DeviceDriverSet
   void DeviceDriverSet_ULTRASONIC_Test(void);
 #endif
-  void DeviceDriverSet_ULTRASONIC_Get(uint16_t *ULTRASONIC_Get /*out*/);
+  void DeviceDriverSet_ULTRASONIC_Get(unsigned long *ULTRASONIC_Get /*out*/, unsigned long timeoutUs);
 
 private:
 #define TRIG_PIN 13      // Arduino pin tied to trigger pin on the ultrasonic sensor.

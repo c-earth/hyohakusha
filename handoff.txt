@@ -716,3 +716,31 @@ OCTOBER 8, 2026: GIT INITIALIZATION AND ACCEPTED SEQUENCING
 
 - Completed GitHub publication: created public https://github.com/c-earth/hyohakusha, configured origin, and pushed initial commit e13226e on main. Git reported successful new-branch publication and upstream tracking of origin/main. The earlier sign-in/remote/push pending note is resolved. Initial commit contains 39 files; ignored bulk folders remain local. This completion record is being committed separately to keep the published initial commit unchanged.
 
+OCTOBER 8, 2026: EXACT EDITING INSTRUCTIONS
+- User authorized updating the instruction file after clarifying that a requested
+  edit whose stated condition does not match the file requires clarification.
+- Added a rule under AGENTS.md Clarification: verify the requested target and
+  condition, explain mismatches, and wait for an explicit answer before editing;
+  do not reinterpret the request as a different change based on inferred intent.
+- Verified the saved rule and this record by read-only inspection. No project
+  code, tests, or hardware operations were run. No roadmap stage changed.
+
+
+OCTOBER 8, 2026: RAW ULTRASOUND SOURCE CHANGE
+- User authorized implementation of the discussed ultrasound plan: remove /58 and the 150 cm cap, use a host-supplied pulseIn timeout, report raw pulseIn output, leave existing thresholds/logic unchanged, and rename variables only when their names signify distance.
+- Driver now accepts timeoutUs and writes the unsigned long pulseIn result directly. N21 requires integer T from 1 to 1,000,000 microseconds; invalid or missing T replies {H_error_timeout}. D1=2 reports raw microseconds, with zero indicating timeout.
+- Raw storage and numeric formatting preserve the 32-bit result. Distance-signifying variables renamed; neutral ULTRASONIC_Get and tempda names retained. Unused millimeter member renamed UltrasoundPulse_unused without changing its type or adding behavior.
+- Built-in obstacle/follow calls explicitly retain the prior 1,000,000 us timeout. Their numeric thresholds and branching remain unchanged and now consume raw microseconds. N21 D1=1 similarly retains its threshold of 20.
+- Host Sensors action now sends T using UltrasoundTimeoutUs (default 30,000, permitted 1-1,000,000) and labels output ultrasound_us. README documents the source contract and deployment status.
+- Verified by read-only source/caller inspection and git diff --check (no whitespace errors; existing AGENTS.md line-ending warning). No compiler, project script, test, upload, or hardware session executed. Source change is not deployment: installed UNO firmware still uses its prior contract; host labels are intended for the modified firmware after upload.
+- No roadmap gate completed. Next sensor-review work remains floor sensors after user direction; build/offline execution and upload require their own authorization.
+
+OCTOBER 8, 2026: REMOVE UNUSED ULTRASOUND MEMBER
+- User explicitly requested removal of UltrasoundPulse_unused. Confirmed its only source occurrence was its declaration, then removed that declaration from ApplicationFunctionSet_xxx0.h.
+- Read-only search after editing confirmed no occurrences remain; scoped diff inspection confirmed the deletion. No build, tests, or hardware operations performed.
+- User asked why N21 handling cannot resemble the old direct call. Simplifying timeout validation placement remains discussion only; no command-handler change authorized or made in this step.
+
+OCTOBER 8, 2026: HOST OWNS ULTRASOUND TIMEOUT VALIDATION
+- User directed that the host handle timeout validation. Removed the N21 firmware validation/error block; the switch now directly calls CMD_UltrasoundModuleStatus_xxx0(doc["D1"], doc["T"]). No validation was moved into the handler.
+- Updated README to reflect direct forwarding. This supersedes the earlier firmware 1-1,000,000 validation/error contract; that range remains in the existing PowerShell host parameter only.
+- Verified the saved switch and README by read-only inspection and scoped git diff --check. No build, project execution, tests, or hardware operations performed.
