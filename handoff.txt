@@ -744,3 +744,7 @@ OCTOBER 8, 2026: HOST OWNS ULTRASOUND TIMEOUT VALIDATION
 - User directed that the host handle timeout validation. Removed the N21 firmware validation/error block; the switch now directly calls CMD_UltrasoundModuleStatus_xxx0(doc["D1"], doc["T"]). No validation was moved into the handler.
 - Updated README to reflect direct forwarding. This supersedes the earlier firmware 1-1,000,000 validation/error contract; that range remains in the existing PowerShell host parameter only.
 - Verified the saved switch and README by read-only inspection and scoped git diff --check. No build, project execution, tests, or hardware operations performed.
+
+OCTOBER 8, 2026: ULTRASOUND COMMIT AND PUSH
+- User authorized commit and push. Commit e890746 contains the ultrasound changes, host request update, documentation, and pending exact-editing instruction change in AGENTS.md. Untracked .codex/ excluded.
+- Push succeeded to origin/codex/sequential-rover-control with upstream tracking configured. No merge to main or firmware deployment performed. This publication record is committed separately.
