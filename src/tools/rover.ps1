@@ -8,17 +8,49 @@ param(
     [int]$DurationMs = 200,
     [switch]$EnableMovement,
     [ValidateRange(1,1000000)][int]$UltrasoundTimeoutUs = 30000,
-    [ValidateRange(-170,170)][int]$PanStepDegrees = 1
+    [ValidateRange(-170,170)][int]$PanStepDegrees = 1,
+    [ValidatePattern('^\d{17}$')][string]$SessionTimestamp,
+    [string]$ChatName
 )
 $ErrorActionPreference = 'Stop'
-function New-CaptureFolder {
-    $stamp = [TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow,
-        [TimeZoneInfo]::FindSystemTimeZoneById('Eastern Standard Time')).ToString('yyyyMMddHHmmssfff')
-    return Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) "data/captures/$stamp"
+class CaptureSession {
+    hidden [string]$Folder
+    hidden [string]$Name
+
+    CaptureSession([string]$dataRoot, [string]$timestamp, [string]$chatName) {
+        if ($timestamp -notmatch '^\d{17}$' -or [string]::IsNullOrWhiteSpace($chatName)) {
+            throw 'Capture actions require -SessionTimestamp yyyyMMddHHmmssfff and -ChatName.'
+        }
+        [DateTime]::ParseExact($timestamp, 'yyyyMMddHHmmssfff', [Globalization.CultureInfo]::InvariantCulture) | Out-Null
+        $this.Folder = Join-Path $dataRoot $timestamp
+        $this.Name = $chatName
+        $infoPath = Join-Path $this.Folder 'info.txt'
+        if (Test-Path -LiteralPath $this.Folder) {
+            if (-not (Test-Path -LiteralPath $infoPath) -or
+                (Get-Content -LiteralPath $infoPath -Raw).TrimEnd("`r", "`n") -cne $chatName) {
+                throw 'Session info.txt is missing or contains a different chat name.'
+            }
+        } else {
+            New-Item -ItemType Directory -Path $this.Folder | Out-Null
+            Set-Content -LiteralPath $infoPath -Value $this.Name -Encoding utf8
+        }
+    }
+
+    [string] NewCaptureFolder() {
+        $stamp = [TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow,
+            [TimeZoneInfo]::FindSystemTimeZoneById('Eastern Standard Time')).ToString('yyyyMMddHHmmssfff')
+        $captureFolder = Join-Path $this.Folder "captures/$stamp"
+        New-Item -ItemType Directory -Path $captureFolder | Out-Null
+        return $captureFolder
+    }
+}
+$captureSession = $null
+if ($Action -in @('Record','PanTest','FinePanTest')) {
+    $dataRoot = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) 'data'
+    $captureSession = [CaptureSession]::new($dataRoot, $SessionTimestamp, $ChatName)
 }
 if ($Action -eq 'Record') {
-    $folder = New-CaptureFolder
-    New-Item -ItemType Directory -Path $folder | Out-Null
+    $folder = $captureSession.NewCaptureFolder()
     Set-Content -LiteralPath (Join-Path $folder 'info.txt') -Value 'camera recording'
     $manifest = Join-Path $folder 'frames.csv'
     'file,request_utc,received_utc' | Set-Content $manifest
@@ -83,8 +115,7 @@ try {
     } elseif ($Action -in @('PanTest','FinePanTest')) {
         $centerAngle = if ($Action -eq 'FinePanTest') { 100 } else { 90 }
         $panAngle = if ($Action -eq 'FinePanTest') { 101 } else { 100 }
-        $folder = New-CaptureFolder
-        New-Item -ItemType Directory -Path $folder | Out-Null
+        $folder = $captureSession.NewCaptureFolder()
         Set-Content -LiteralPath (Join-Path $folder 'info.txt') -Value "camera pan test $centerAngle to $panAngle to $centerAngle"
         try {
             foreach ($step in @(@('center',$centerAngle),@('pan',$panAngle),@('return',$centerAngle))) {

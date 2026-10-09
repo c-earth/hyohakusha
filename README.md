@@ -20,7 +20,10 @@ stopping behavior require verification on the rover.
 ## Project structure
 
 ```text
-data/captures/                 Camera capture sessions
+data/<session-start>/         Data grouped by chat session; info.txt is chat name
+  captures/<capture-start>/   Camera images and capture metadata
+  logs/                      Control logs
+  analysis/<analysis-start>/ Offline diagnostics, summaries and source provenance
 rover/
   calibration/camera.json      Provisional camera pan alignment
   firmware/
@@ -105,7 +108,7 @@ Historical firmware records use old IDs.
 
 ```powershell
 ./src/tools/rover.ps1 -Action Sensors
-./src/tools/rover.ps1 -Action Record -Seconds 10 -FramesPerSecond 2
+./src/tools/rover.ps1 -Action Record -Seconds 10 -FramesPerSecond 2 -SessionTimestamp 20261008231700000 -ChatName 'Example chat'
 ./src/tools/rover.ps1 -Action Stop
 ```
 
@@ -184,8 +187,8 @@ Camera pan tests move the servo, capture three images, and attempt to restore
 the starting command angle:
 
 ```powershell
-./src/tools/rover.ps1 -Action PanTest      # 90 -> 100 -> 90
-./src/tools/rover.ps1 -Action FinePanTest  # 100 -> 101 -> 100
+./src/tools/rover.ps1 -Action PanTest -SessionTimestamp 20261008231700000 -ChatName 'Example chat'      # 90 -> 100 -> 90
+./src/tools/rover.ps1 -Action FinePanTest -SessionTimestamp 20261008231700000 -ChatName 'Example chat'  # 100 -> 101 -> 100
 ```
 
 ## Calibration and capture data
@@ -206,9 +209,17 @@ angles turn left. This is provisional alignment, not a measured physical angle.
 The recorded last command is historical and does not establish the current
 servo position. Scripts do not load the calibration automatically.
 
-Capture sessions are saved under `data/captures/yyyyMMddHHmmssfff/`, using
-New York local time for folder names. Each session includes `info.txt` describing
-its purpose. Recording currently produces `frame-000000.jpg`, subsequent numbered
+Data is grouped under `data/<session-start-timestamp>/`, using New York local time
+and the format `yyyyMMddHHmmssfff`. The session's `info.txt` contains the chat name.
+For Record, PanTest and FinePanTest, pass `-SessionTimestamp` and `-ChatName`;
+reuse both values for every capture in that chat. A different name for an existing
+session is rejected before rover connection. The script does not discover chat
+metadata automatically. Captures go under `captures/<capture-start-timestamp>/`
+inside the session, with their own `info.txt` describing the capture purpose.
+Control logs belong under the session's `logs/` folder; the rover tool does not
+currently generate control logs. Existing data is grouped under
+`data/20261008220100000/`, with session name `setup`.
+Recording currently produces `frame-000000.jpg`, subsequent numbered
 JPEGs, and `frames.csv` with `file`, `request_utc`, and `received_utc` columns.
 Existing sessions also include a first frame named `frame000000.jpg` and pan-test
 images named `center.jpg`, `pan.jpg`, and `return.jpg`.

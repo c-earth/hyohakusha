@@ -1,5 +1,5 @@
 ELEGOO rover project handoff
-Updated: October 8, 2026, America/New_York
+Updated: October 9, 2026, America/New_York
 Workspace: D:\projects\hyohakusha
 
 READ FIRST
@@ -19,11 +19,23 @@ CURRENT DIRECTION AND AUTHORIZATION
 - Retain PowerShell rover control; separate vision/reconstruction component.
   Technology and communication boundary remain undecided; no Python migration
   of control or shared rover module has been implemented.
-- Offline image analysis was deferred. No analysis code or dependency installation
-  authorized by that discussion. No live session or continuing movement permission
-  remains from completed trials. Next hardware/implementation/execution scope
-  must be explicit. Permission rules do not replace task authorization.
+- User subsequently authorized package installation, runtime verification and
+  offline analysis of existing captures with saved diagnostics and summaries.
+  This offline task is complete. Later calibration authorization below is current;
+  completed earlier trials do not themselves grant scope. Permission rules do not
+  replace task authorization.
 - One main agent and one owner of TCP control; no subagents unless requested.
+- User permits N1-N8/N100, Python/PowerShell scripting and tests/execution for
+  calibration toward exploration. No supplied markers: use sensor-native units.
+  Standing user assumptions until revised: flat surface/no drops, minimal edge
+  obstacles, roughly geometric visible objects, area within Wi-Fi range. These
+  are user-provided assumptions, not measured environmental guarantees.
+- User will not navigate; intervention starts over. Avoid hitting anything in
+  the first place; do not move when path/body/stopping clearance is uncertain.
+  Additional packages require explicit user permission. Keep detailed records.
+- User prioritized sandbox permissions before further calibration. Currently
+  holding hardware operations for reload of updated project rules. No wheel
+  movement during this chat's baseline/permission work.
 
 CURRENT FIRMWARE
 - UNO current source built and uploaded October 8 using arduino:avr:uno, core 1.8.8.
@@ -52,6 +64,15 @@ CURRENT FIRMWARE
 - euler.md preserves removed yaw function; do not restore it incidentally.
 
 LIVE EVIDENCE AND LIMITS
+- October 8, 23:17-23:18 New York: user-authorized N1-N8 test completed through
+  existing rover.ps1, with no permission prompts or escalation requests. Sensors
+  replied; N5 90/100/90 and N6 +5/-5 acknowledged and visually moved/returned.
+  N4 four directions at PWM 60 / 200 ms: left/right images show opposite shifts;
+  forward/backward small framing changes do not conclusively verify translation.
+  Final two images appeared stable; host N100 sent and TCP closed. No metric
+  calibration or isolated stopping test. Camera command reference left at 90.
+  Details and capture locations in journal.md. This completed test grants no
+  continuing movement scope; next stage remains image-tool assessment/calibration.
 - Wi-Fi sensor replies received for all five categories using current numbering:
   ultrasound 10817 us; floor 297/708/526; estimated battery 8.667 V;
   gyro -372,60,228; accelerometer 48,52,15388. These are one-session readings,
@@ -69,6 +90,15 @@ LIVE EVIDENCE AND LIMITS
   Keyboard live checks were explicitly skipped.
 
 CONTROL TOOLS AND RULES
+- Added .codex/rules/pip.rules for exact prefix .venv\Scripts\python.exe -m pip
+  install, at user's request. Saved/read-back verified; current-session loading
+  not verified. Packages subsequently installed under the explicit request below.
+  The rule itself does not authorize dependency tasks.
+- New code belongs under src/agent/ per user direction. Track candidates for
+  promotion to src/tools/ or other higher-level locations with purpose/readiness;
+  src/agent/analyze_captures.py now provides the offline setup-session assessment.
+  Candidate for later src/tools/ promotion after removing dataset-specific plan
+  and report assumptions; currently remains under src/agent/.
 - src/tools/rover.ps1: Sensors, Record, Move, Stop, PanTest, FinePanTest, PanStep.
   Address default 192.168.4.1; TCP 100; HTTP capture; MJPEG port 81.
   Move requires EnableMovement; PWM 1-100. DurationMs now has NO range validator,
@@ -77,9 +107,15 @@ CONTROL TOOLS AND RULES
   sends N100 and closes TCP. No automatic movement/sensor verification.
 - src/control/keyboard-rover.ps1: existing keyboard controller; updated N4 mapping.
 - .codex/rules/rover.rules allows exact prefix:
-  pwsh -NoProfile -File ./src/tools/rover.ps1
-  Saved/read-back verified; current-session rule loading not verified. Does not
-  cover arbitrary PowerShell or in-memory test variants. .codex/ remains untracked.
+  pwsh -NoProfile -File followed by a literal union of six paths: tools/rover.ps1,
+  control/keyboard-rover.ps1, agent/collect_baseline.ps1, agent/stationary_survey.ps1,
+  agent/run_calibration.ps1 and agent/run_exploration.ps1 (each prefixed ./src/).
+  No directory wildcard. .codex/rules/python.rules allows all arguments to exact
+  .venv\Scripts\python.exe, per explicit user request; no src restriction for Python.
+  Older pip rule retained. Codex execpolicy check parsed both files, confirmed
+  allowed Python/planned PS examples and no match for bare python/outside.ps1.
+  CLI emitted nonfatal temp-directory access warnings. Rules need Codex restart
+  and trusted project configuration; active-session loading NOT verified.
 - Scripts duplicate connection logic; no cross-process ownership lock, unified
   session log, localization or autonomous search implementation exists.
 - Do not combine pan with active driving without resolving mode/expiry interaction.
@@ -88,20 +124,52 @@ CONTROL TOOLS AND RULES
   remain review items. Recheck current source instead of importing old findings.
 
 CAPTURES AND CALIBRATION
+- Existing data now grouped under data/20261008220100000/, using the start time
+  of previous chat "Build and replace firmware" (October 8, 22:01 New York).
+  Session info.txt contains setup. Includes this chat's captures as requested.
+  All 74 pre-existing file SHA256 hashes matched after relocation; one new
+  session info.txt added. Old per-capture folders, names and metadata preserved.
+  Historical control log: logs/live-sequential-check/events.jsonl in setup folder.
+- rover.ps1 capture actions now require SessionTimestamp (yyyyMMddHHmmssfff,
+  New York session start) and ChatName; reuse across the chat. Session info.txt
+  holds chat name; captures retain timestamped subfolders and purpose info.txt.
+  A CaptureSession class owns folder creation and rejects name conflicts before
+  TCP connection. README examples/layout updated. Verified by source read-back;
+  no script runtime tests or rover operations performed for restructuring.
 - Provisional camera alignment: command 100 forward, increasing command turns left.
   rover/calibration/camera.json is historical command state, not position feedback.
   No established motor encoders, servo feedback or calibrated camera intrinsics.
-- Useful current sessions under data/captures/:
+- Useful capture groups under data/20261008220100000/captures/:
   20261008223235046: N5 100/105/100, center/pan/return.jpg.
   20261008223409165: N6 0/+5/-5, center/pan/return.jpg.
   20261008225316209: nine pan080.jpg..pan120.jpg, stationary 5-degree sweep.
   20261008225505941: before.jpg/after.jpg around forward PWM 60 / 200 ms and N100.
 - Each has info.txt. Pan/capture trials lack timestamp manifests and measured poses.
   Inspected images overlap; sufficient depth parallax/reconstruction geometry is
-  not established. No reconstruction or quantitative image analysis performed.
+  not established. Offline quantitative analysis completed below; no reconstruction.
   Stationary sweep alone does not establish a usable translational baseline.
 
 IMAGE-ANALYSIS ENVIRONMENT
+- User requested "install useful visual analysis packages". Installed Windows
+  binary wheels into .venv with pip, exit code 0: opencv-python 5.0.0.93,
+  NumPy 2.5.3, Pillow 12.3.0, SciPy 1.18.1, scikit-image 0.26.0 and
+  Matplotlib 3.11.2, plus dependencies. Pip reported successful installation.
+  Subsequently all six imported and pip check found no broken requirements.
+  SIFT, homography, sparse LK flow and Matplotlib rendering worked on this dataset.
+  Python emitted "Failed to find real location" for the base interpreter path;
+  commands nevertheless exited 0. Cause not investigated. No rover operations.
+  Full dependency list and completed analysis evidence in journal.
+  The assessment below is historical and predates this installation.
+- October 8 tool assessment recommends OpenCV + NumPy for offline image matching,
+  pixel-motion diagnostics and later camera calibration; this is a proposal,
+  not a user-accepted installation or verified runtime. Official opencv-python
+  metadata lists Python 3.13 support and Windows wheels. Local package-directory
+  inspection still found no cv2/OpenCV/NumPy/Pillow/Open3D/PyTorch entries.
+  Next concrete scope: install into .venv and run offline checks on existing
+  N4/pan/stationary captures, saving correspondence/flow diagnostics. No rover
+  motion needed. Metric drive calibration still requires a known scale; pixel
+  motion alone cannot establish centimeters. Defer COLMAP until translated-view
+  geometry is suitable; Open3D RGB-D integration lacks depth input here.
 - .venv/pyvenv.cfg: Python 3.13.13, base D:\local\python\python_3_13_13\python.exe,
   include-system-site-packages=false. Use .venv\Scripts\python.exe for authorized
   project work; keep tools/esptool's cp312 packages separate.
@@ -114,10 +182,20 @@ IMAGE-ANALYSIS ENVIRONMENT
   project installations. No image-analysis dependency installed or code executed.
 
 NEXT DECISIONS / PROPOSED WORK, NOT AUTHORIZATION
-1. Finish choosing image-analysis tools and their installation/execution scope.
-2. Define drive calibration: reference scale, PWM/duration samples, travel and turn
-   measurement, drift, stopping distance, repeatability, floor and battery context.
-   Camera motion alone has not established metric scale. Obtain calibration scope.
+1. Core image-tool assessment and initial offline capture diagnostics complete.
+   Results: data/20261008220100000/analysis/20261008234638721/final/report.md.
+   21 pairs, 28 unchanged source JPEGs, 65 verified readable PNG outputs.
+   SIFT stationary medians 0.30/0.44 px; forward pairs 3.12/5.18 px, backward
+   7.21 px; left/right dx +100.37/-103.60 px. No physical scale established.
+   Accepted results layout: data/<session-start>/analysis/<analysis-start>/,
+   alongside captures/logs. Current run retains preliminary outputs at its root;
+   final/ contains the completed report, chart, CSVs, provenance and diagnostics.
+2. Resume sensor-relative calibration after permission reload. Stationary baseline
+   recorded in current chat session data/20261008233756000/: 12 sensor batches
+   under logs/20261009001118940 and 4 JPEGs under captures/20261009001136723.
+   Raw echo 8023-8069 us, battery estimate 7.979-8.019 V. Current camera frame
+   shows little near-floor area; path clearance remains unestablished. No wheel
+   movement, no metric scale or calibrated stopping allowance established.
 3. Define bounded search area, prohibited areas, supervision, movement/session
    limits, stop conditions and sufficient coverage before exploration.
 4. During authorized search, collect images, sensor values, commands, replies,
@@ -125,6 +203,58 @@ NEXT DECISIONS / PROPOSED WORK, NOT AUTHORIZATION
 5. Assess/calibrate camera geometry and reconstruct collected translated views;
    agree relative vs metric output, quality criteria and export format.
 No calibration, autonomous exploration or reconstruction stage is complete.
+
+CALIBRATION AND SAFETY PROPOSAL (NOT IMPLEMENTED)
+- Use stationary sensor repeatability, battery context, gyro bias/gravity axes,
+  raw ultrasound/floor baselines and camera forward/return. Then gated short N4
+  pulses with sensor/image response and stopping observations; repeat before
+  enlarging motion. No supplied markers or navigation assistance. Report native
+  units/relative geometry until a physical conversion is independently supported.
+- One TCP owner; stop -> observe -> decide -> bounded move -> stop -> observe.
+  Reject T=0, invalid duration and stale/missing/malformed or conflicting evidence.
+  Initially no pan or ultrasound reads during active movement; their synchronous
+  processing/mode changes can delay expiry or remove timed-drive mode.
+- Gate forward travel on fresh camera and repeated valid ultrasound, using raw
+  D1=2 replies. Zero echo is unknown, not clear. Do not use legacy N7 boolean.
+  Clearance must cover robot footprint, predicted segment, measured stopping
+  allowance and uncertainty. No numeric threshold validated yet.
+- Reverse only within a recently verified traversed corridor with known pose,
+  heading and enough uncertainty margin; otherwise stop for supervised recovery.
+  Prior traversal alone is insufficient. Turns require full swept-body clearance.
+- Exclude stairs/drop-offs from initial area. Floor ADC baselines are supporting
+  evidence, not verified cliff protection; no rear sensor/odometry established.
+- Stop on communication/capture/sensor fault, unexpected movement, tilt, floor
+  anomaly, obstacle entry or exceeded session bounds. N100 send/ack is not proof
+  of rest. Observe stopping before resuming; remote stop failure is unresolved
+  without intervention. Do not presume an available human navigation/recovery
+  fallback. Heartbeat close is fallback, not collision braking.
+- Existing rover.ps1 does NOT enforce this protocol. Dedicated IMU sampling
+  during movement, pose/corridor tracking and automatic clearance gates are
+  proposals requiring their own implementation scope; standalone Sensors closes
+  TCP, so it cannot provide a continuous turn-rate record for a separate Move.
+
+RESERVED CODE PLAN (ALL SIX FILES ARE EMPTY, NOT IMPLEMENTED)
+- src/agent/rover_session.psm1: RoverSession owns TCP, heartbeat, unique replies,
+  command validation, sensor/capture timestamps, logging and best-effort stop.
+  SafetyGate rejects unsafe/unknown paths and invalid/over-budget movement.
+- src/agent/run_calibration.ps1: CalibrationRunner uses that session for staged
+  stationary/short-pulse trials; captures commands, sensors, frames and outcomes.
+- src/agent/assess_calibration.py: CalibrationAssessment computes baseline noise,
+  bias, motion response and stopping evidence in native units, with provenance.
+- src/agent/map_observations.py: ObservationMap tracks observed/traversed areas,
+  pose uncertainty and coverage; unknown space must stay distinct from free space.
+- src/agent/run_exploration.ps1: ExplorationRunner applies observe/decide/gate/
+  move/stop loop with run limits and verified-corridor reverse restrictions.
+- src/agent/reconstruct_scene.py: ReconstructionAssessment checks translated-view
+  geometry and exports reconstruction only with supported quality/scale claims.
+- Existing collect_baseline.ps1, stationary_survey.ps1 and analyze_captures.py
+  retained. The survey is unverified live: sandbox denied connection before commands;
+  escalation rejected while user switched focus to permissions. Baseline completed
+  with approved network access. NewCaptureFolder local variable renamed to avoid
+  PowerShell class/property name collision; Sensors/Record subsequently ran.
+- User explicitly requested planning and zero-byte name reservations. Verified all
+  six absent before creation and size 0 afterward; no placeholder was executed.
+  No promotion from src/agent/ planned before implementation/evidence supports it.
 
 ACCEPTED RETENTION AND REPOSITORY STATE
 - Keep vendor package, backups, active vendor HEX/addLibrary ZIPs and accepted old
@@ -138,8 +268,10 @@ ACCEPTED RETENTION AND REPOSITORY STATE
   no project code, tests, simulation or rover operations performed for this task.
 
 PUBLICATION REQUEST
-- User authorized commit and push of pending completed changes. Scope: duration
-  restriction removal, README, handoff/journal consolidation, AGENTS instructions
-  and .codex/rules/rover.rules. Existing untracked git.rules stays local.
-- Pre-publication whitespace check passed. Publication outcome is reported in
-  chat; no runtime tests or additional rover operations performed.
+- October 9 user authorized commit and push of pending work: capture session
+  handling/fix, offline analyzer, baseline/survey scripts, six empty reservations,
+  README/handoff/journal and rover/pip/Python rules. Existing git.rules stays local.
+  Captures, derived reports and .venv remain ignored under existing .gitignore.
+- Reviewed pending diff, verified reserved files size 0, whitespace check passed.
+  Publishing current codex/sequential-rover-control branch to origin; outcome
+  reported in chat. No extra runtime tests or rover operations for publication.

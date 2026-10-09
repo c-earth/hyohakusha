@@ -1,0 +1,7 @@
+# Project-venv pip installation approval; loaded only when the project config layer is trusted.
+# This approval does not replace explicit task authorization for dependency installation.
+
+prefix_rule(
+    pattern = [".venv\\Scripts\\python.exe", "-m", "pip", "install"],
+    decision = "allow",
+)

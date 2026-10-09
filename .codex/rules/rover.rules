@@ -1,7 +1,25 @@
-# Project-local rover script approval; loaded only when the project config layer is trusted.
-# This approval does not replace explicit task authorization for rover operations.
+# Project-local PowerShell entry points, including reserved future scripts.
+# Loaded at startup only when the project configuration layer is trusted.
+# Paths are literal arguments, not directory globs. Add new entry points here.
+# This approval does not replace task authorization or rover safety checks.
 
 prefix_rule(
-    pattern = ["pwsh", "-NoProfile", "-File", "./src/tools/rover.ps1"],
+    pattern = ["pwsh", "-NoProfile", "-File", [
+        "./src/tools/rover.ps1",
+        "./src/control/keyboard-rover.ps1",
+        "./src/agent/collect_baseline.ps1",
+        "./src/agent/stationary_survey.ps1",
+        "./src/agent/run_calibration.ps1",
+        "./src/agent/run_exploration.ps1",
+    ]],
     decision = "allow",
+    match = [
+        "pwsh -NoProfile -File ./src/agent/collect_baseline.ps1 -Samples 12",
+        "pwsh -NoProfile -File ./src/agent/run_calibration.ps1",
+        "pwsh -NoProfile -File ./src/agent/run_exploration.ps1",
+    ],
+    not_match = [
+        "pwsh -NoProfile -File ./outside.ps1",
+        "pwsh -NoProfile -Command Get-Date",
+    ],
 )
