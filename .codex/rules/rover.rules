@@ -1,0 +1,7 @@
+# Project-local rover script approval; loaded only when the project config layer is trusted.
+# This approval does not replace explicit task authorization for rover operations.
+
+prefix_rule(
+    pattern = ["pwsh", "-NoProfile", "-File", "./src/tools/rover.ps1"],
+    decision = "allow",
+)

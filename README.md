@@ -159,7 +159,9 @@ clear, flat floor:
 ```
 
 Directions are `Forward`, `Backward`, `Left`, and `Right`. This tool accepts
-PWM 1–100 and duration 50–500 ms. PWM is not measured velocity. The modified
+PWM 1–100; `DurationMs` is an integer in milliseconds, defaults to 200, and has
+no range validation. Firmware `T=0` bypasses timed expiry; the tool still sends
+N100 after its duration wait. PWM is not measured velocity. The modified
 UNO source uses `N4` for timed movement. Legacy N1 direct motor control, legacy N3 untimed
 movement, and N110 clear-to-programming commands and their dedicated handlers
 have been removed from the modified source; N100 stopping remains. These removals

@@ -5,7 +5,7 @@ param(
     [ValidateRange(1,10)][int]$FramesPerSecond = 2,
     [ValidateSet('Forward','Backward','Left','Right')][string]$Direction = 'Forward',
     [ValidateRange(1,100)][int]$Speed = 60,
-    [ValidateRange(50,500)][int]$DurationMs = 200,
+    [int]$DurationMs = 200,
     [switch]$EnableMovement,
     [ValidateRange(1,1000000)][int]$UltrasoundTimeoutUs = 30000,
     [ValidateRange(-170,170)][int]$PanStepDegrees = 1

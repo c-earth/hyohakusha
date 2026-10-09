@@ -61,6 +61,7 @@ Read `README.md` for project usage and structure, and relevant `info.txt` files 
 # Project Retrieval
 
 - Read [handoff.txt](handoff.txt) for the current project state, completed work, accepted decisions, and the staged roadmap through AI control, exploration, and final 3D reconstruction. Its proposed steps are not authorization to execute them.
+- Keep `handoff.txt` concise and current. Read [journal.md](journal.md) when historical evidence or completed-task details are needed; archived findings and authorizations may be superseded and do not authorize new work. The current accepted sequence is image-analysis tool assessment, drive calibration, then bounded search while collecting reconstruction data; functional movement checks are not drive calibration.
 - Read [WORKFLOW.md](WORKFLOW.md) for the proposed decision process, agent hierarchy, runtime loop, and development sequence. Treat proposed components as unimplemented until verified.
 - Read [Project structure](README.md#project-structure) for file locations and [Development tools and references](README.md#development-tools-and-references) for tool configuration.
 - Read [Firmware and backups](README.md#firmware-and-backups) before work involving firmware artifacts.
@@ -70,6 +71,7 @@ Read `README.md` for project usage and structure, and relevant `info.txt` files 
 # Agent Operations
 
 - As authorized tasks are completed, update `handoff.txt` with the actual changes, checks performed, results, remaining work, and next applicable stage. The user grants continuing authorization for these progress updates within completed task scope; this does not authorize additional implementation or execution. Mark roadmap stages complete only when their completion criteria are met, and distinguish partial progress from completion. Keep accepted decisions and relevant limitations accurate rather than carrying forward stale claims.
+- Put detailed completed-task records in `journal.md`; keep crucial current results, accepted decisions, unresolved limitations and next steps in `handoff.txt`. Preserve historical evidence when relocating it, and clearly distinguish it from current state.
 - Keep changes within the authorized scope; do not add unrelated cleanup or refactoring.
 - Keep one owner of the rover TCP control connection. Do not operate concurrent controllers.
 - Distinguish command acknowledgments from observed physical results.
