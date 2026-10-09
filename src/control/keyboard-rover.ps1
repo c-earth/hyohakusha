@@ -146,7 +146,7 @@ $timer.Add_Tick({
         $direction = Get-DriveDirection $script:held
         if ($arm.Checked -and [Windows.Forms.Form]::ActiveForm -eq $form -and $direction -ne 0) {
             # Nonzero duration is mandatory: stock T=0 has no timeout.
-            Send-Drive (@{N=2;D1=$direction;D2=[int]$speed.Value;T=250;H='key'} | ConvertTo-Json -Compress)
+            Send-Drive (@{N=4;D1=$direction;D2=[int]$speed.Value;T=250;H='key'} | ConvertTo-Json -Compress)
             $script:wasMoving = $true
             $status.Text = "Driving: $direction | PWM $($speed.Value) | 250 ms commands"
         } else {

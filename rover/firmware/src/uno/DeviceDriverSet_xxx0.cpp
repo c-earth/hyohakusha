@@ -41,18 +41,6 @@ void DeviceDriverSet_RBGLED::DeviceDriverSet_RBGLED_Init(uint8_t set_Brightness)
   FastLED.addLeds<NEOPIXEL, PIN_RBGLED>(leds, NUM_LEDS);
   FastLED.setBrightness(set_Brightness);
 }
-#if _Test_DeviceDriverSet
-void DeviceDriverSet_RBGLED::DeviceDriverSet_RBGLED_Test(void)
-{
-  leds[0] = CRGB::White;
-  FastLED.show();
-  delay_xxx(50);
-  leds[1] = CRGB::Red;
-  FastLED.show();
-  delay_xxx(50);
-  DeviceDriverSet_RBGLED_xxx(50 /*Duration*/, 5 /*Traversal_Number*/, CRGB::Black);
-}
-#endif
 
 void DeviceDriverSet_RBGLED::DeviceDriverSet_RBGLED_Color(uint8_t LED_s, uint8_t r, uint8_t g, uint8_t b)
 {
@@ -67,44 +55,6 @@ void DeviceDriverSet_RBGLED::DeviceDriverSet_RBGLED_Color(uint8_t LED_s, uint8_t
     leds[LED_s] = Color(r, g, b);
   }
   FastLED.show();
-}
-
-/*Key*/
-uint8_t DeviceDriverSet_Key::keyValue = 0;
-
-static void attachPinChangeInterrupt_GetKeyValue(void)
-{
-  DeviceDriverSet_Key Key;
-  static uint32_t keyValue_time = 0;
-  static uint8_t keyValue_temp = 0;
-  if ((millis() - keyValue_time) > 500)
-  {
-    keyValue_temp++;
-    keyValue_time = millis();
-    if (keyValue_temp > keyValue_Max)
-    {
-      keyValue_temp = 0;
-    }
-    Key.keyValue = keyValue_temp;
-  }
-}
-void DeviceDriverSet_Key::DeviceDriverSet_Key_Init(void)
-{
-  pinMode(PIN_Key, INPUT_PULLUP);
-  //attachPinChangeInterrupt(PIN_Key, attachPinChangeInterrupt_GetKeyValue, FALLING);
-  attachInterrupt(0, attachPinChangeInterrupt_GetKeyValue, FALLING);
-}
-
-#if _Test_DeviceDriverSet
-void DeviceDriverSet_Key::DeviceDriverSet_Key_Test(void)
-{
-  Serial.println(DeviceDriverSet_Key::keyValue);
-}
-#endif
-
-void DeviceDriverSet_Key::DeviceDriverSet_key_Get(uint8_t *get_keyValue)
-{
-  *get_keyValue = keyValue;
 }
 
 /*ITR20001 Detection*/
@@ -127,19 +77,6 @@ int DeviceDriverSet_ITR20001::DeviceDriverSet_ITR20001_getAnaloguexxx_R(void)
 {
   return analogRead(PIN_ITR20001xxxR);
 }
-#if _Test_DeviceDriverSet
-void DeviceDriverSet_ITR20001::DeviceDriverSet_ITR20001_Test(void)
-{
-  Serial.print("\tL=");
-  Serial.print(analogRead(PIN_ITR20001xxxL));
-
-  Serial.print("\tM=");
-  Serial.print(analogRead(PIN_ITR20001xxxM));
-
-  Serial.print("\tR=");
-  Serial.println(analogRead(PIN_ITR20001xxxR));
-}
-#endif
 
 /*Voltage Detection*/
 void DeviceDriverSet_Voltage::DeviceDriverSet_Voltage_Init(void)
@@ -156,16 +93,6 @@ float DeviceDriverSet_Voltage::DeviceDriverSet_Voltage_getAnalogue(void)
   return Voltage;
 }
 
-#if _Test_DeviceDriverSet
-void DeviceDriverSet_Voltage::DeviceDriverSet_Voltage_Test(void)
-{
-  //float Voltage = ((analogRead(PIN_Voltage) * 5.00 / 1024) * 7.67); //7.66666=((10 + 1.50) / 1.50)
-  float Voltage = (analogRead(PIN_Voltage) * 0.0375); //7.66666=((10 + 1.50) / 1.50)
-  Voltage = Voltage + (Voltage * 0.08);               //Compensation 8%
-  //Serial.println(analogRead(PIN_Voltage) * 4.97 / 1024);
-  Serial.println(Voltage);
-}
-#endif
 /*Motor control*/
 void DeviceDriverSet_Motor::DeviceDriverSet_Motor_Init(void)
 {
@@ -176,30 +103,6 @@ void DeviceDriverSet_Motor::DeviceDriverSet_Motor_Init(void)
   pinMode(PIN_Motor_STBY, OUTPUT);
 }
 
-#if _Test_DeviceDriverSet
-void DeviceDriverSet_Motor::DeviceDriverSet_Motor_Test(void)
-{
-  //A...Right
-  //B...Left
-  digitalWrite(PIN_Motor_STBY, HIGH);
-
-  digitalWrite(PIN_Motor_AIN_1, HIGH);
-  analogWrite(PIN_Motor_PWMA, 100);
-  digitalWrite(PIN_Motor_BIN_1, HIGH);
-  analogWrite(PIN_Motor_PWMB, 100);
-  delay_xxx(1000);
-
-  digitalWrite(PIN_Motor_STBY, LOW);
-  delay_xxx(1000);
-  digitalWrite(PIN_Motor_STBY, HIGH);
-  digitalWrite(PIN_Motor_AIN_1, LOW);
-  analogWrite(PIN_Motor_PWMA, 100);
-  digitalWrite(PIN_Motor_BIN_1, LOW);
-  analogWrite(PIN_Motor_PWMB, 100);
-
-  delay_xxx(1000);
-}
-#endif
 
 /*
  Motor_control：AB / movement direction and speed
@@ -285,32 +188,6 @@ void DeviceDriverSet_ULTRASONIC::DeviceDriverSet_ULTRASONIC_Get(unsigned long *U
   *ULTRASONIC_Get = pulseIn(ECHO_PIN, HIGH, timeoutUs);
 }
 
-#if _Test_DeviceDriverSet
-void DeviceDriverSet_ULTRASONIC::DeviceDriverSet_ULTRASONIC_Test(void)
-{
-
-  unsigned long tempda = 0;
-  digitalWrite(TRIG_PIN, LOW);
-  delayMicroseconds(2);
-  digitalWrite(TRIG_PIN, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(TRIG_PIN, LOW);
-  tempda = pulseIn(ECHO_PIN, HIGH, 1000000UL);
-
-  // if (tempda_x > 50)
-  // {
-  //   tempda_x = 50;
-  // }
-
-  // // return tempda;
-  // return tempda_x;
-
-  Serial.print("ULTRASONIC=");
-  Serial.print(tempda); // Raw echo duration; zero means timeout.
-  Serial.println("us");
-}
-
-#endif
 
 /*Servo*/
 
@@ -329,53 +206,8 @@ void DeviceDriverSet_Servo::DeviceDriverSet_Servo_Init(unsigned int Position_ang
   delay_xxx(500);
   myservo.detach();
 }
-#if _Test_DeviceDriverSet
-void DeviceDriverSet_Servo::DeviceDriverSet_Servo_Test(void)
-{
-  for (;;)
-  {
-    myservo.attach(PIN_Servo_z);
-    myservo.write(180);
-    delay_xxx(500);
-    myservo.write(0);
-    delay_xxx(500);
-  }
 
-  // for (uint8_t i = 0; i < 6; i++)
-  // {
-  //   myservo.write(30 * i);
-  //   delay(500);
-  // }
-  // for (uint8_t i = 6; i > 0; i--)
-  // {
-  //   myservo.write(30 * i);
-  //   delay(500);
-  // }
-
-  // myservo.attach(PIN_Servo_y);
-
-  // for (uint8_t i = 0; i < 6; i++)
-  // {
-  //   myservo.write(30 * i);
-  //   delay(500);
-  // }
-  // for (uint8_t i = 6; i > 0; i--)
-  // {
-  //   myservo.write(30 * i);
-  //   delay(500);
-  // }
-}
-#endif
-
-/*0.17sec/60degree(4.8v)*/
-void DeviceDriverSet_Servo::DeviceDriverSet_Servo_control(unsigned int Position_angle)
-{
-  myservo.attach(PIN_Servo_z);
-  myservo.write(Position_angle);
-  delay_xxx(450);
-  myservo.detach();
-}
-// N=5 accepts absolute degrees without ten-degree quantization.
+// N5 accepts absolute degrees without ten-degree quantization.
 // Preserve the original limits and leave built-in mode units unchanged.
 void DeviceDriverSet_Servo::DeviceDriverSet_Servo_degrees(uint8_t Servo, unsigned int Position_angle)
 {

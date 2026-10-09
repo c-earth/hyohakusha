@@ -70,7 +70,7 @@ Hold WASD or arrow keys to drive; release to stop. Space/Escape, losing window
 focus, and closing the window stop and disable driving. Multiple directions stop.
 
 Default motor PWM is 60, adjustable from 20 to 100. The controller renews
-timed `N=2`, `T=250` ms commands every 100 ms. Heartbeat loss disconnects control.
+timed `N4`, `T=250` ms commands every 100 ms. Heartbeat loss disconnects control.
 Firmware loop timing, network queues, and motor coasting affect physical stopping.
 No automatic obstacle avoidance is implemented.
 
@@ -79,6 +79,27 @@ Check keyboard direction logic without connecting to the rover:
 ```powershell
 pwsh -NoProfile -File ./src/control/keyboard-rover.ps1 -SelfTest
 ```
+
+## Host command numbering
+
+The modified UNO source and host scripts use this numbering:
+
+| Command | Function |
+|---|---|
+| N1 | Battery voltage |
+| N2 | Raw gyro XYZ |
+| N3 | Raw accelerometer XYZ |
+| N4 | Timed drive |
+| N100 | Stop |
+| N5 | Absolute servo |
+| N6 | Incremental pan |
+| N7 | Ultrasound |
+| N8 | Floor sensor |
+
+N100 is the stop command and matches the unchanged camera source's disconnect
+command. This numbering is not built or uploaded; updated host scripts require
+the updated UNO firmware. No alternate command IDs are retained.
+Historical firmware records use old IDs.
 
 ## Command-line tools
 
@@ -90,37 +111,41 @@ pwsh -NoProfile -File ./src/control/keyboard-rover.ps1 -SelfTest
 
 `Sensors` requests raw ultrasound echo duration in microseconds and the three floor
 sensor values. `-UltrasoundTimeoutUs` sets the requested timeout (1–1,000,000 µs;
-default 30,000). The modified UNO source passes `T` from N21 requests directly
+default 30,000). The modified UNO source passes `T` from N7 requests directly
 to the measurement handler, leaving validation to the host, and reports raw pulse duration
 for `D1=2`; zero means timeout. These source changes have not been built or uploaded,
 so the installed firmware still uses the earlier centimeter reply contract.
 Built-in obstacle-avoidance and following modes have been removed from the
 modified UNO source, including button, IR, and N101 selection paths. Line tracking
 and leave-ground detection have also been removed, including N101 and N23 handlers.
-N22 reads the selected floor sensor on request (`D1=0` left, `1` middle, `2` right)
+N8 reads the selected floor sensor on request (`D1=0` left, `1` middle, `2` right)
 and replies with its raw ADC value, leaving the current mode unchanged. Floor readings
 are no longer cached or acquired each loop. Floor-triggered standby gyro calibration and heading
 reference resets are removed; startup gyro calibration and direction-change heading
 resets remain. These removals have not been built or uploaded.
-N24 reads battery voltage on request and returns `{H_value}` in volts with three
+N1 reads battery voltage on request and returns `{H_value}` in volts with three
 fractional digits, leaving the current mode unchanged. It uses the existing
 `ADC × 0.0375 × 1.08` conversion, whose accuracy is unverified. The Sensors action
-includes this reading as `battery_v`; N24 is not yet built or uploaded.
-N25 reads all three gyro axes in one register transaction and returns
+includes this reading as `battery_v`; N1 is not yet built or uploaded.
+N2 reads all three gyro axes in one register transaction and returns
 `{H_x,y,z}` as signed raw counts in sensor X/Y/Z order. The Sensors action labels
 this `gyro_raw_xyz`. No offset subtraction, rate conversion, calibration, yaw
 integration, or mode change occurs. Sensor mounting axes and I2C read validity
-are not established by this reply. N25 is not yet built or uploaded.
-N26 reads all three accelerometer axes in one register transaction and returns
+are not established by this reply. N2 is not yet built or uploaded.
+N3 reads all three accelerometer axes in one register transaction and returns
 `{H_x,y,z}` as signed raw counts in sensor X/Y/Z order, including gravity's
 contribution. The Sensors action labels this `accel_raw_xyz`. No conversion,
 calibration, or mode change occurs. Mounting axes and read validity are unverified;
-N26 is not yet built or uploaded.
+N3 is not yet built or uploaded.
 IR remote handling has been removed from the modified UNO source: no receiver
 initialization, polling, or remote command processing remains in the application.
-The bundled IRremote library files are retained. This removal has not been built
+Onboard button handling, its interrupt registration, and its driver have also been
+removed from the modified UNO source. The repeated standby motor-stop loop step
+has also been removed; N100 still explicitly stops the motors and selects standby.
+These button changes have not been built or uploaded.
+The three IRremote source/header files have been removed from active UNO source; vendor and backup copies remain. This removal has not been built
 or uploaded.
-The N21 status threshold retains its numeric value
+The N7 status threshold retains its numeric value
 and now compares raw microseconds in the modified source.
 `Record` downloads JPEG frames. `Stop` sends the standby command.
 The camera reference source sends standby when a TCP control connection closes,
@@ -134,19 +159,21 @@ clear, flat floor:
 ```
 
 Directions are `Forward`, `Backward`, `Left`, and `Right`. This tool accepts
-PWM 1–100 and duration 50–500 ms. PWM is not measured velocity. The downloaded
-UNO source retains `N=2` for timed movement. N1 direct motor control, N3 untimed
+PWM 1–100 and duration 50–500 ms. PWM is not measured velocity. The modified
+UNO source uses `N4` for timed movement. Legacy N1 direct motor control, legacy N3 untimed
 movement, and N110 clear-to-programming commands and their dedicated handlers
 have been removed from the modified source; N100 stopping remains. These removals
 have not been built or uploaded.
-N4 independent PWM control and N102 rocker driving have also been removed,
-including their handlers, mode state, and loop calls. N2 remains the host driving
-command and N100 remains the stop command; N2 still bypasses expiry when `T=0`.
-N2 forward/backward output now uses the requested PWM directly on both channels;
+Legacy N4 independent PWM control and N102 rocker driving have also been removed,
+including their handlers, mode state, and loop calls. N4 remains the host driving
+command and N100 remains the stop command; N4 still bypasses expiry when `T=0`.
+N4 forward/backward output now uses the requested PWM directly on both channels;
 gyro correction and its 10–180 PWM clamp have been removed from driving. Host gyro
 reads remain available. This source change has not been built or uploaded.
-Host LED commands N7, N8, and N105 and their handlers/state have been removed from
-the modified UNO source. Automatic battery warnings and standby LED behavior remain.
+Legacy host LED commands N7, N8, and N105 and their handlers/state have been removed from
+the modified UNO source. Automatic battery monitoring, low-battery warnings, and
+standby LED animation have also been removed. N1 request-time battery readings,
+and LED initialization remain. N100 only stops motors and selects standby; its LED clearing has been removed.
 This removal has not been built or uploaded.
 Heartbeat disconnect timing has not been safety-tested on the installed camera
 firmware and does not replace the short movement duration.
@@ -161,11 +188,11 @@ the starting command angle:
 
 ## Calibration and capture data
 
-The modified UNO source adds N27 for pan-only incremental control:
+The modified UNO source adds N6 for pan-only incremental control:
 `{"N":27,"D1":1,"H":"pan"}` increases the last commanded pan angle by 1 degree;
 negative `D1` decreases it. The target is clamped to 10–170 degrees. Command state
 starts at the startup angle (90 degrees) and is updated by N5 pan commands.
-It is not position feedback. N27 waits 500 ms, detaches the servo, enters
+It is not position feedback. N6 waits 500 ms, detaches the servo, enters
 programming mode, and sends `{H_ok}` after driver execution. N106 and its legacy
 ten-degree-step handlers have been removed. N5 remains available.
 The host tool exposes `-Action PanStep -PanStepDegrees 1` (default step 1;

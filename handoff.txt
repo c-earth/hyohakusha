@@ -831,3 +831,47 @@ CURRENT RESUME SUMMARY: OCTOBER 8, 2026
 - Gyro recalibration command and accumulator reset were discussed but not implemented. Current calibration still averages Z only, and its repeated-call accumulator defect remains. Raw gyro/accelerometer replies perform no calibration or unit conversion. Camera and onboard button remain unchanged by user choice.
 - Verification to date: focused read-only source/caller inspection, reference searches, reply/buffer reasoning, and git diff --check. No compilation, project scripts/tests, simulations, hardware readings, rover movement, or firmware upload performed for these changes. Nothing here establishes deployed behavior or physical stopping. All roadmap completion gates remain open.
 - Before compilation/upload, obtain explicit execution/hardware scope. Preserve firmware backups; confirm target settings and report compiler results rather than assuming build success. No dependency installation authorized. Do not add cleanup/refactoring as incidental next work.
+
+OCTOBER 8, 2026: REMOVE ONBOARD BUTTON HANDLING
+- User explicitly selected button removal after clarification of the loop discussion. Removed the button loop call, application handler/declaration, object/initialization, driver class/methods, interrupt callback/registration, and button constants from active UNO source.
+- Standby motor stopping, N100, watchdog, battery monitoring and automatic LEDs remain. Earlier records that button behavior remains are superseded by this removal.
+- Updated README with source/deployment distinction. Verified the complete removal diff and reference search in active application/device-driver/loop source; no removed button references remain. No compilation, tests, scripts, upload, hardware operations, commit or push performed. Installed firmware is unchanged.
+
+OCTOBER 8, 2026: REMOVE AUTOMATIC BATTERY AND LED LOOP STEPS
+- User explicitly requested removal of the battery step and automatic LED step. Removed SensorDataUpdate and RGB loop calls, implementations/declarations, cached voltage, low-battery flag and threshold. Removed warning/breathing animation and its delays.
+- N24 fresh estimated voltage readings, voltage driver/initialization, LED driver/initialization and N100 LED clearing remain. Standby motor stopping remains. Earlier automatic battery/LED preservation decisions are superseded.
+- Current loop: watchdog refresh -> standby stop -> serial dispatch -> pending N5 servo -> N2 drive/expiry -> N100 clear/stop.
+- Updated README. Verified scoped source diff, removed-reference search, retained N24/LED-clear paths and whitespace check by read-only inspection. No build, tests, project script execution, upload, hardware operation, commit or push performed; installed firmware is unchanged.
+
+OCTOBER 8, 2026: REMOVE STANDBY LOOP STEP
+- User explicitly requested removal of the discussed standby step. Removed ApplicationFunctionSet_Standby implementation/declaration and loop call. Standby mode/startup assignments remain; they no longer cause a repeated motor-stop output through this function. N100 explicit motor stopping and N2 expiry stopping remain unchanged.
+- Current loop: watchdog refresh -> serial dispatch -> pending N5 servo -> N2 drive/expiry -> N100 clear/stop. Updated README; this supersedes earlier records that the standby loop stop remains.
+- Verified removed-reference search, source diff, retained N100/N2 stop calls and whitespace check by read-only inspection. No compilation, tests, project scripts, upload, hardware operation, commit or push performed. Installed firmware is unchanged; startup physical behavior after this removal is unverified.
+
+OCTOBER 8, 2026: REMOVE LED ACTIONS FROM N100 ONLY
+- User explicitly requested removing LED behavior from this step, focusing on stopping. Removed FastLED.clear and the black LED driver call from CMD_ClearAllFunctions_xxx0 only. Motor stop, stored motion reset and standby selection remain unchanged. LED initialization/driver are outside this change.
+- Updated README; prior records that N100 clears LEDs are superseded. Verified saved handler and whitespace check through read-only inspection. No build, tests, project scripts, upload, hardware operation, commit or push performed.
+
+OCTOBER 8, 2026: RENUMBER REMAINING HOST COMMANDS
+- User specified sequential order battery, gyro, accelerometer, drive, stop, absolute servo, incremental pan, ultrasound, floor. New IDs respectively N1-N9. Updated UNO dispatch/protocol comments, both host scripts and README. Payloads and handler behavior remain unchanged.
+- Retained N100 as a stop compatibility alias because the unchanged camera source emits N100 on disconnect/heartbeat termination. Installed camera firmware has not been verified against that source. Other old IDs are not aliases. Previous records use historical numbering.
+- Verification: read-only dispatch/caller/diff inspection and whitespace check. No build, tests, scripts, upload, hardware session, commit or push performed. Updated scripts require updated UNO firmware; numbering is not deployed.
+
+OCTOBER 8, 2026: KEEP STOP AT N100; SHIFT FOLLOWING COMMANDS
+- User requested moving stop to N100 and shifting the remaining commands up. Final mapping: N1 battery, N2 gyro, N3 accelerometer, N4 drive, N5 absolute servo, N6 incremental pan, N7 ultrasound, N8 floor, N100 stop.
+- Updated UNO dispatch/comments, host scripts and README. Removed the intermediate stop alias branch; N100 is now the sole stop command and matches the unchanged camera source. Previous sequential N1-N9 mapping is superseded. No Git publication requested by this numbering instruction.
+- Verified dispatch/caller consistency, saved documentation and whitespace through read-only inspection. No build, tests, project scripts, upload, hardware operation, commit or push performed. Updated scripts still require updated UNO firmware.
+
+OCTOBER 8, 2026: UNUSED-CODE REVIEW TAGS AND EULER PRESERVATION
+- User has tagged for later removal: ApplicationFunctionSet_Bootup, CMD_inspect_xxx0 and its mode entry, parameterized CMD_CarControlTimeLimit_xxx0 overload, DeviceDriverSet_Servo_control, and MPU6050_dveGetEulerAngles. These tags do not remove active source.
+- User explicitly requested preserving the raw Euler/yaw function in a separate project Markdown file. Created euler.md with the exact current function body, source provenance and pending-removal status. Verified saved code matches the source by read-only comparison. No firmware edits, builds, tests, uploads or hardware operations in this review task.
+- Next review item: unused ApplicationFunctionSet_Expression declaration, then other unused declarations, retained LED/test/library code and startup-only behavior.
+
+OCTOBER 8, 2026: REMOVE ALL REVIEW-TAGGED UNUSED CODE
+- User explicitly authorized removal of all tagged items. Removed Bootup and inspect functions/declarations and inspect enum entry, unused parameterized timed-drive overload/declaration, unused legacy servo-control method/declaration, yaw integration function/declaration, five unimplemented declarations, all six disabled driver test bodies/declarations, and IRremote.cpp/IRremote.h/IRremoteInt.h from active UNO source only.
+- Preserved remaining mode numeric values by explicitly assigning programming mode 6. euler.md still preserves the exact removed yaw function. Vendor/backup IR copies remain. Untagged LED initialization/driver, application delay helper, startup gyro calibration and related state remain unchanged.
+- Updated README. Verification limited to source diff/reference searches, preserved Euler comparison and whitespace check. No compilation, tests, project scripts, upload, hardware operation, commit or push performed. Installed firmware unchanged.
+
+OCTOBER 8, 2026: COMMIT AND PUSH AUTHORIZATION
+- User explicitly requested commit and push of completed pending changes. Publication scope: firmware loop simplification, final command numbering, tagged unused-code removal, host scripts, README, this handoff and euler.md. Untracked .codex/ excluded.
+- Read-only pre-publication checks: current branch codex/sequential-rover-control; origin https://github.com/c-earth/hyohakusha.git; whitespace check passed. No build/upload verification added. Publication outcome will be reported in chat without a separate record commit.

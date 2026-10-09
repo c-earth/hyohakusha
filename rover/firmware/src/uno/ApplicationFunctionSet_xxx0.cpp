@@ -25,7 +25,6 @@ ApplicationFunctionSet Application_FunctionSet;
 /*Hardware device object list*/
 MPU6050_getdata AppMPU6050getdata;
 DeviceDriverSet_RBGLED AppRBG_LED;
-DeviceDriverSet_Key AppKey;
 DeviceDriverSet_ITR20001 AppITR20001;
 DeviceDriverSet_Voltage AppVoltage;
 
@@ -69,8 +68,7 @@ enum SmartRobotCarMotionControl
 enum SmartRobotCarFunctionalModel
 {
   Standby_mode,           /*Standby Mode*/
-  CMD_inspect = 5,
-  CMD_Programming_mode,                   /*Programming Mode*/
+  CMD_Programming_mode = 6,                   /*Programming Mode*/
   CMD_ClearAllFunctions_Standby_mode,     /*Clear All Functions And Enter Standby Mode*/
   CMD_CarControl_TimeLimit = 10,               /*Car Movement Direction Control With Time Limit*/
   CMD_ServoControl = 13,                       /*Servo Motor Control*/
@@ -95,7 +93,6 @@ void ApplicationFunctionSet::ApplicationFunctionSet_Init(void)
   AppVoltage.DeviceDriverSet_Voltage_Init();
   AppMotor.DeviceDriverSet_Motor_Init();
   AppServo.DeviceDriverSet_Servo_Init(90);
-  AppKey.DeviceDriverSet_Key_Init();
   AppRBG_LED.DeviceDriverSet_RBGLED_Init(20);
   AppULTRASONIC.DeviceDriverSet_ULTRASONIC_Init();
   AppITR20001.DeviceDriverSet_ITR20001_Init();
@@ -170,180 +167,6 @@ static void ApplicationFunctionSet_SmartRobotCarMotionControl(SmartRobotCarMotio
     break;
   }
 }
-/*
- Robot car update sensors' data:Partial update (selective update)
-*/
-void ApplicationFunctionSet::ApplicationFunctionSet_SensorDataUpdate(void)
-{
-
-  // AppMotor.DeviceDriverSet_Motor_Test();
-  { /*Battery voltage status update*/
-    static unsigned long VoltageData_time = 0;
-    static int VoltageData_number = 1;
-    if (millis() - VoltageData_time > 10) //read and update the data per 10ms
-    {
-      VoltageData_time = millis();
-      VoltageData_V = AppVoltage.DeviceDriverSet_Voltage_getAnalogue();
-      if (VoltageData_V < VoltageDetection)
-      {
-        VoltageData_number++;
-        if (VoltageData_number == 500) //Continuity to judge the latest voltage value multiple 
-        {
-          VoltageDetectionStatus = true;
-          VoltageData_number = 0;
-        }
-      }
-      else
-      {
-        VoltageDetectionStatus = false;
-      }
-    }
-  }
-
-  // { /*value updation for the ultrasonic sensor：for the Obstacle Avoidance mode*/
-  //   AppULTRASONIC.DeviceDriverSet_ULTRASONIC_Get(&UltrasoundPulse_us /*out*/, 1000000UL);
-  //   UltrasoundDetectionStatus = function_xxx(UltrasoundPulse_us, 0, ObstacleDetection);
-  // }
-
-  // acquire timestamp
-  // static unsigned long Test_time;
-  // if (millis() - Test_time > 200)
-  // {
-  //   Test_time = millis();
-  //   //AppITR20001.DeviceDriverSet_ITR20001_Test();
-  // }
-}
-/*
-  Startup operation requirement：
-*/
-void ApplicationFunctionSet::ApplicationFunctionSet_Bootup(void)
-{
-  Application_SmartRobotCarxxx0.Functional_Mode = Standby_mode;
-}
-
-/*RBG_LED set*/
-void ApplicationFunctionSet::ApplicationFunctionSet_RGB(void)
-{
-  static unsigned long getAnalogue_time = 0;
-  FastLED.clear(true);
-  if (true == VoltageDetectionStatus) //Act on low power state？
-  {
-    if ((millis() - getAnalogue_time) > 3000)
-    {
-      getAnalogue_time = millis();
-    }
-  }
-  unsigned long temp = millis() - getAnalogue_time;
-  if (function_xxx((temp), 0, 500) && VoltageDetectionStatus == true)
-  {
-    switch (temp)
-    {
-    case /* constant-expression */ 0 ... 49:
-      /* code */
-      AppRBG_LED.DeviceDriverSet_RBGLED_xxx(0 /*Duration*/, 2 /*Traversal_Number*/, CRGB::Red);
-      break;
-    case /* constant-expression */ 50 ... 99:
-      /* code */
-      AppRBG_LED.DeviceDriverSet_RBGLED_xxx(0 /*Duration*/, 2 /*Traversal_Number*/, CRGB::Black);
-      break;
-    case /* constant-expression */ 100 ... 149:
-      /* code */
-      AppRBG_LED.DeviceDriverSet_RBGLED_xxx(0 /*Duration*/, 2 /*Traversal_Number*/, CRGB::Red);
-      break;
-    case /* constant-expression */ 150 ... 199:
-      /* code */
-      AppRBG_LED.DeviceDriverSet_RBGLED_xxx(0 /*Duration*/, 2 /*Traversal_Number*/, CRGB::Black);
-      break;
-    case /* constant-expression */ 200 ... 249:
-      /* code */
-      AppRBG_LED.DeviceDriverSet_RBGLED_xxx(0 /*Duration*/, 2 /*Traversal_Number*/, CRGB::Red);
-      break;
-    case /* constant-expression */ 250 ... 299:
-      /* code */
-      AppRBG_LED.DeviceDriverSet_RBGLED_xxx(0 /*Duration*/, 2 /*Traversal_Number*/, CRGB::Red);
-      break;
-    case /* constant-expression */ 300 ... 349:
-      /* code */
-      AppRBG_LED.DeviceDriverSet_RBGLED_xxx(0 /*Duration*/, 2 /*Traversal_Number*/, CRGB::Black);
-      break;
-    case /* constant-expression */ 350 ... 399:
-      /* code */
-      AppRBG_LED.DeviceDriverSet_RBGLED_xxx(0 /*Duration*/, 2 /*Traversal_Number*/, CRGB::Red);
-      break;
-    case /* constant-expression */ 400 ... 449:
-      /* code */
-      AppRBG_LED.DeviceDriverSet_RBGLED_xxx(0 /*Duration*/, 2 /*Traversal_Number*/, CRGB::Black);
-      break;
-    case /* constant-expression */ 450 ... 499:
-      /* code */
-      AppRBG_LED.DeviceDriverSet_RBGLED_xxx(0 /*Duration*/, 2 /*Traversal_Number*/, CRGB::Red);
-      break;
-    default:
-      break;
-    }
-  }
-  else if (((function_xxx((temp), 500, 3000)) && VoltageDetectionStatus == true) || VoltageDetectionStatus == false)
-  {
-    switch (Application_SmartRobotCarxxx0.Functional_Mode) //Act on mode control sequence
-    {
-    case /* constant-expression */ Standby_mode:
-      /* code */
-      {
-        if (VoltageDetectionStatus == true)
-        {
-          AppRBG_LED.DeviceDriverSet_RBGLED_xxx(0 /*Duration*/, 2 /*Traversal_Number*/, CRGB::Red);
-          delay(30);
-          AppRBG_LED.DeviceDriverSet_RBGLED_xxx(0 /*Duration*/, 2 /*Traversal_Number*/, CRGB::Black);
-          delay(30);
-        }
-        else
-        {
-          static uint8_t setBrightness = 0;
-          static boolean et = false;
-          static unsigned long time = 0;
-
-          if ((millis() - time) > 10)
-          {
-            time = millis();
-            if (et == false)
-            {
-              setBrightness += 1;
-              if (setBrightness == 100)
-                et = true;
-            }
-            else if (et == true)
-            {
-              setBrightness -= 1;
-              if (setBrightness == 0)
-                et = false;
-            }
-          }
-          // AppRBG_LED.leds[1] = CRGB::Blue;
-          AppRBG_LED.leds[0] = CRGB::Violet;
-          FastLED.setBrightness(setBrightness);
-          FastLED.show();
-        }
-      }
-      break;
-    case /* constant-expression */ CMD_Programming_mode:
-      /* code */
-      {
-      }
-      break;
-    default:
-      break;
-    }
-  }
-}
-
-/*Standby mode*/
-void ApplicationFunctionSet::ApplicationFunctionSet_Standby(void)
-{
-  if (Application_SmartRobotCarxxx0.Functional_Mode == Standby_mode)
-  {
-    ApplicationFunctionSet_SmartRobotCarMotionControl(stop_it, 0);
-  }
-}
 
 /* 
 --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -352,14 +175,6 @@ void ApplicationFunctionSet::ApplicationFunctionSet_Standby(void)
  $ Elegoo & SmartRobot & 2020-06
 */
 
-void ApplicationFunctionSet::CMD_inspect_xxx0(void)
-{
-  if (Application_SmartRobotCarxxx0.Functional_Mode == CMD_inspect)
-  {
-    Serial.println("CMD_inspect");
-    delay(100);
-  }
-}
 static void CMD_CarControl(uint8_t is_CarDirection, uint8_t is_CarSpeed)
 {
   switch (is_CarDirection)
@@ -381,57 +196,10 @@ static void CMD_CarControl(uint8_t is_CarDirection, uint8_t is_CarSpeed)
   }
 }
 /*
-  N2：command
+  N4：command
   CMD mode：Receive the control commands from the APP,perform movement direction and speed control of the car
   Time limited
 */
-void ApplicationFunctionSet::CMD_CarControlTimeLimit_xxx0(uint8_t is_CarDirection, uint8_t is_CarSpeed, uint32_t is_Timer)
-{
-  static boolean CarControl = false;
-  static boolean CarControl_TE = false; //Time stamp
-  static boolean CarControl_return = false;
-  if (Application_SmartRobotCarxxx0.Functional_Mode == CMD_CarControl_TimeLimit) //enter time-limited control mode
-  {
-    CarControl = true;
-    if (is_Timer != 0) //#1 if the pre-set time is not ... (zero)
-    {
-      if ((millis() - Application_SmartRobotCarxxx0.CMD_CarControl_Millis) > (is_Timer)) //check the timestamp
-      {
-        CarControl_TE = true;
-        ApplicationFunctionSet_SmartRobotCarMotionControl(stop_it, 0);
-
-        Application_SmartRobotCarxxx0.Functional_Mode = CMD_Programming_mode; /*set mode to programming mode<Waiting for the next set of control commands>*/
-        if (CarControl_return == false)
-        {
-
-#if _is_print
-          Serial.print('{' + CommandSerialNumber + "_ok}");
-#endif
-          CarControl_return = true;
-        }
-      }
-      else
-      {
-        CarControl_TE = false; //There still has time left
-        CarControl_return = false;
-      }
-    }
-    if (CarControl_TE == false)
-    {
-      CMD_CarControl(is_CarDirection, is_CarSpeed);
-    }
-  }
-  else
-  {
-    if (CarControl == true)
-    {
-      CarControl_return = false;
-      CarControl = false;
-      Application_SmartRobotCarxxx0.CMD_CarControl_Millis = 0;
-    }
-  }
-}
-
 void ApplicationFunctionSet::CMD_CarControlTimeLimit_xxx0(void)
 {
   static boolean CarControl = false;
@@ -499,15 +267,13 @@ void ApplicationFunctionSet::CMD_ClearAllFunctions_xxx0(void)
   if (Application_SmartRobotCarxxx0.Functional_Mode == CMD_ClearAllFunctions_Standby_mode) //Command:N100 Clear all functions to enter standby mode
   {
     ApplicationFunctionSet_SmartRobotCarMotionControl(stop_it, 0);
-    FastLED.clear(true);
-    AppRBG_LED.DeviceDriverSet_RBGLED_xxx(0 /*Duration*/, NUM_LEDS /*Traversal_Number*/, CRGB::Black);
     Application_SmartRobotCarxxx0.Motion_Control = stop_it;
     Application_SmartRobotCarxxx0.Functional_Mode = Standby_mode;
   }
 }
 
 /*
-  N21:command
+  N7:command
   CMD mode：The ultrasonic module receives and feeds back status and raw echo duration in microseconds.
   Input：
 */
@@ -605,7 +371,7 @@ void ApplicationFunctionSet::CMD_PanIncrement_xxx0(int16_t stepDegrees)
 }
 
 /*
-  N22:command
+  N8:command
   CMD mode：Read and return the selected raw floor-sensor value on request.
   Input：
 */
@@ -642,28 +408,6 @@ void ApplicationFunctionSet::CMD_TraceModuleStatus_xxx0(uint8_t is_get)
  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
-/*Key command*/
-void ApplicationFunctionSet::ApplicationFunctionSet_KeyCommand(void)
-{
-  uint8_t get_keyValue;
-  static uint8_t temp_keyValue = keyValue_Max;
-  AppKey.DeviceDriverSet_key_Get(&get_keyValue);
-
-  if (temp_keyValue != get_keyValue)
-  {
-    temp_keyValue = get_keyValue;//Serial.println(get_keyValue);
-    switch (get_keyValue)
-    {
-    case /* constant-expression */ 4:
-      /* code */
-      Application_SmartRobotCarxxx0.Functional_Mode = Standby_mode;
-      break;
-    default:
-
-      break;
-    }
-  }
-}
 /*Data analysis on serial port*/
 void ApplicationFunctionSet::ApplicationFunctionSet_SerialPortDataAnalysis(void)
 {
@@ -711,7 +455,7 @@ void ApplicationFunctionSet::ApplicationFunctionSet_SerialPortDataAnalysis(void)
       /*Please view the following code blocks in conjunction with the Communication protocol for Smart Robot Car.pdf*/
       switch (control_mode_N)
       {
-      case 2:                                                                     /*<Command：N 2> */
+      case 4:                                                                     /*<Command：N4> */
         Application_SmartRobotCarxxx0.Functional_Mode = CMD_CarControl_TimeLimit; /*Car movement direction and speed control：Time limited mode*/
         CMD_is_CarDirection = doc["D1"];
         CMD_is_CarSpeed = doc["D2"];
@@ -722,7 +466,7 @@ void ApplicationFunctionSet::ApplicationFunctionSet_SerialPortDataAnalysis(void)
 #endif
         break;
 
-      case 5:                                                             /*<Command：N 5> */
+      case 5:                                                             /*<Command：N5> */
         Application_SmartRobotCarxxx0.Functional_Mode = CMD_ServoControl; /*servo motor control*/
         CMD_is_Servo = doc["D1"];
         CMD_is_Servo_angle = doc["D2"];
@@ -730,37 +474,37 @@ void ApplicationFunctionSet::ApplicationFunctionSet_SerialPortDataAnalysis(void)
         Serial.print('{' + CommandSerialNumber + "_ok}");
 #endif
         break;
-      case 21: /*<Command：N 21>：ultrasonic sensor: raw echo duration; T is timeout in microseconds */
+      case 7: /*<Command：N7>：ultrasonic sensor: raw echo duration; T is timeout in microseconds */
         CMD_UltrasoundModuleStatus_xxx0(doc["D1"], doc["T"]);
 #if _is_print
         //Serial.print('{' + CommandSerialNumber + "_ok}");
 #endif
         break;
 
-      case 22: /*<Command：N 22>：read selected raw floor sensor on request */
+      case 8: /*<Command：N8>：read selected raw floor sensor on request */
         CMD_TraceModuleStatus_xxx0(doc["D1"]);
 #if _is_print
         //Serial.print('{' + CommandSerialNumber + "_ok}");
 #endif
         break;
 
-      case 24: /*<Command：N 24>：read estimated battery voltage on request */
+      case 1: /*<Command：N1>：read estimated battery voltage on request */
         CMD_VoltageMeasurement_xxx0();
         break;
 
-      case 25: /*<Command：N 25>：read raw X/Y/Z gyro counts on request */
+      case 2: /*<Command：N2>：read raw X/Y/Z gyro counts on request */
         CMD_GyroMeasurement_xxx0();
         break;
 
-      case 26: /*<Command：N 26>：read raw X/Y/Z accelerometer counts on request */
+      case 3: /*<Command：N3>：read raw X/Y/Z accelerometer counts on request */
         CMD_AccelerationMeasurement_xxx0();
         break;
 
-      case 27: /*<Command：N 27>：signed pan-only degree increment */
+      case 6: /*<Command：N6>：signed pan-only degree increment */
         CMD_PanIncrement_xxx0(doc["D1"]);
         break;
 
-      case 100:                                                                             /*<Command：N 100> */
+      case 100:                                                                             /*<Command：N100> */
         Application_SmartRobotCarxxx0.Functional_Mode = CMD_ClearAllFunctions_Standby_mode; /*Clear all function:Enter standby mode*/
 #if _is_print
         Serial.print("{ok}");

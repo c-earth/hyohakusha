@@ -15,12 +15,6 @@ class ApplicationFunctionSet
 {
 public:
   void ApplicationFunctionSet_Init(void);
-  void ApplicationFunctionSet_Bootup(void);
-  void ApplicationFunctionSet_RGB(void);
-  void ApplicationFunctionSet_Expression(void);
-  void ApplicationFunctionSet_Standby(void);            //Standby Mode
-  void ApplicationFunctionSet_KeyCommand(void);         //Mode Switch Button
-  void ApplicationFunctionSet_SensorDataUpdate(void);   //Sensor Data Update
   void ApplicationFunctionSet_SerialPortDataAnalysis(void);
 
 public: /*CMD*/
@@ -31,28 +25,19 @@ public: /*CMD*/
   void CMD_AccelerationMeasurement_xxx0(void);
   void CMD_PanIncrement_xxx0(int16_t stepDegrees);
 
-  void CMD_inspect_xxx0(void);
   void CMD_CarControlTimeLimit_xxx0(void);
-  void CMD_CarControlTimeLimit_xxx0(uint8_t is_CarDirection, uint8_t is_CarSpeed, uint32_t is_Timer);
   void CMD_ServoControl_xxx0(void);
-  void CMD_VoiceControl_xxx0(uint16_t is_VoiceName, uint32_t is_VoiceTimer);
-  void CMD_LEDCustomExpressionControl_xxx0(void);
   void CMD_ClearAllFunctions_xxx0(void);
-  void CMD_LEDNumberDisplayControl_xxx0(uint8_t is_LEDNumber);
-  void CMD_TrajectoryControl_xxx0(void);
 
 private:
   /*Sensor Raw Value*/
-  volatile float VoltageData_V;        //Battery Voltage Value
   unsigned long UltrasoundPulse_us; //Raw echo duration in microseconds; zero means timeout.
   /*Sensor Status*/
-  boolean VoltageDetectionStatus = false;
   boolean UltrasoundDetectionStatus = false;
 
 public:
 
   /*Sensor Threshold Setting*/
-  const float VoltageDetection = 7.00;
   const uint8_t ObstacleDetection = 20;
 
   String CommandSerialNumber;

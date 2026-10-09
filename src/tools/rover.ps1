@@ -72,10 +72,10 @@ try {
         throw "No response for $tag. Installed firmware may differ from the stock reference."
     }
     if ($Action -eq 'Sensors') {
-        foreach ($item in @(@('ultrasound_us',21,2),@('floor_left',22,0),@('floor_middle',22,1),@('floor_right',22,2),@('battery_v',24,0),@('gyro_raw_xyz',25,0),@('accel_raw_xyz',26,0))) {
+        foreach ($item in @(@('ultrasound_us',7,2),@('floor_left',8,0),@('floor_middle',8,1),@('floor_right',8,2),@('battery_v',1,0),@('gyro_raw_xyz',2,0),@('accel_raw_xyz',3,0))) {
             $tag = [string]$item[0]
             $command = @{N=$item[1];D1=$item[2];H=$tag}
-            if ($item[1] -eq 21) { $command.T = $UltrasoundTimeoutUs }
+            if ($item[1] -eq 7) { $command.T = $UltrasoundTimeoutUs }
             Send-Rover ($command | ConvertTo-Json -Compress)
             $result = Read-Rover $tag
             Write-Output "$tag=$result"
@@ -106,7 +106,7 @@ try {
         }
         Write-Output "Pan test images saved to $folder. Acknowledgments are not angle measurements."
     } elseif ($Action -eq 'PanStep') {
-        Send-Rover (@{N=27;D1=$PanStepDegrees;H='pan_step'} | ConvertTo-Json -Compress)
+        Send-Rover (@{N=6;D1=$PanStepDegrees;H='pan_step'} | ConvertTo-Json -Compress)
         $ack = Read-Rover 'pan_step'
         if ($ack -ne 'ok') { throw 'Unexpected pan increment acknowledgment.' }
         Write-Output 'Pan increment acknowledged; physical angle is not measured.'
@@ -115,7 +115,7 @@ try {
         Write-Output 'Standby command sent; physical stop has not been independently verified.'
     } elseif ($Action -eq 'Move') {
         $directions = @{Left=1;Right=2;Forward=3;Backward=4}
-        Send-Rover (@{N=2;D1=$directions[$Direction];D2=$Speed;T=$DurationMs;H='move'} | ConvertTo-Json -Compress)
+        Send-Rover (@{N=4;D1=$directions[$Direction];D2=$Speed;T=$DurationMs;H='move'} | ConvertTo-Json -Compress)
         Start-Sleep -Milliseconds ($DurationMs + 100)
         Send-Rover '{"N":100}'
         Write-Output 'Timed movement and standby commands sent; verify the physical result.'

@@ -20,10 +20,6 @@ void loop()
 {
   //put your main code here, to run repeatedly :
   wdt_reset();
-  Application_FunctionSet.ApplicationFunctionSet_SensorDataUpdate();
-  Application_FunctionSet.ApplicationFunctionSet_KeyCommand();
-  Application_FunctionSet.ApplicationFunctionSet_RGB();
-  Application_FunctionSet.ApplicationFunctionSet_Standby();
   Application_FunctionSet.ApplicationFunctionSet_SerialPortDataAnalysis();
 
   Application_FunctionSet.CMD_ServoControl_xxx0();
