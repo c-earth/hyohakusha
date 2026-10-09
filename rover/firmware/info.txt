@@ -1,5 +1,12 @@
 1 degree camera pan control
 
+UNO installed: October 8 build, 20,416 bytes flash / 794 bytes global RAM.
+UNO source: October 9 candidate, compiled offline; NOT uploaded.
+Candidate: build/uno-candidate-20261009/uno.ino.hex (19,762 bytes flash / 664 bytes global RAM).
+Candidate checks/identity: build/uno-candidate-20261009/verification.json; see journal.md for limitations.
+Legacy capability review: legacy-review.txt covers UNO application/drivers/libraries and ESP32 bridge/camera/UI.
+Current host uses raw ultrasound D1=2; D1=1 retains an uncalibrated 20-us boolean comparison and must not be used as a distance gate.
+
 Camera: default setting, Wi-Fi channel 9.
 Camera source: downloaded vendor source; not verified against installed firmware.
 Camera build/esp32/flash.bin: full 8 MB readback from board, offset 0, read at 2026-10-08T03:52:27.1146738+00:00.

@@ -7,11 +7,11 @@ prefix_rule(
     pattern = [".venv\\Scripts\\python.exe"],
     decision = "allow",
     match = [
-        "'.venv\\Scripts\\python.exe' ./src/agent/assess_calibration.py",
+        "'.venv\\Scripts\\python.exe' -m src.agent.analysis.assess_calibration",
         "'.venv\\Scripts\\python.exe' -m pip check",
     ],
     not_match = [
-        "python ./src/agent/assess_calibration.py",
-        "tools/esptool/python.exe ./src/agent/assess_calibration.py",
+        "python -m src.agent.analysis.assess_calibration",
+        "tools/esptool/python.exe -m src.agent.analysis.assess_calibration",
     ],
 )

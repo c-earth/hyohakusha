@@ -9,7 +9,7 @@ import unittest
 import cv2
 import numpy as np
 
-from gyro_bias import GyroBiasCalibrator
+from src.agent.runtime.gyro_bias import GyroBiasCalibrator
 
 
 class GyroBiasTests(unittest.TestCase):

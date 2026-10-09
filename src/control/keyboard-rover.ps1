@@ -1,3 +1,5 @@
+using module ./rover-protocol.psm1
+
 param([string]$Address = '192.168.4.1', [switch]$SelfTest)
 $ErrorActionPreference = 'Stop'
 
@@ -134,6 +136,7 @@ $timer.Add_Tick({
             if ($value -eq 123) { $script:receiving = '' }
             $script:receiving += [char]$value
             if ($value -eq 125) {
+                [RoverReply]::ThrowIfFault($script:receiving)
                 if ($script:receiving -eq '{Heartbeat}') { $script:lastHeartbeat = $now }
                 $script:receiving = ''
             }

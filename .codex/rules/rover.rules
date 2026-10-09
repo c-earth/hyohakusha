@@ -1,4 +1,4 @@
-# Project-local PowerShell entry points, including reserved future scripts.
+# Project-local PowerShell entry points; implementation lives in runtime modules.
 # Loaded at startup only when the project configuration layer is trusted.
 # Paths are literal arguments, not directory globs. Add new entry points here.
 # This approval does not replace task authorization or rover safety checks.
@@ -7,6 +7,10 @@ prefix_rule(
     pattern = ["pwsh", "-NoProfile", "-File", [
         "./src/tools/rover.ps1",
         "./src/control/keyboard-rover.ps1",
+        "./src/tools/collect_baseline.ps1",
+        "./src/tools/stationary_survey.ps1",
+        "./src/tools/run_calibration.ps1",
+        "./src/tools/run_exploration.ps1",
         "./src/agent/collect_baseline.ps1",
         "./src/agent/stationary_survey.ps1",
         "./src/agent/run_calibration.ps1",
@@ -14,6 +18,8 @@ prefix_rule(
     ]],
     decision = "allow",
     match = [
+        "pwsh -NoProfile -File ./src/tools/run_calibration.ps1",
+        "pwsh -NoProfile -File ./src/tools/run_exploration.ps1",
         "pwsh -NoProfile -File ./src/agent/collect_baseline.ps1 -Samples 12",
         "pwsh -NoProfile -File ./src/agent/run_calibration.ps1",
         "pwsh -NoProfile -File ./src/agent/run_exploration.ps1",

@@ -1,3 +1,5 @@
+using module ../control/rover-protocol.psm1
+
 param(
     [ValidateSet('Sensors','Record','Move','Stop','PanTest','FinePanTest','PanStep')][string]$Action = 'Sensors',
     [string]$Address = '192.168.4.1',
@@ -72,6 +74,7 @@ if ($Action -eq 'Record') {
 }
 if ($Action -eq 'Move' -and -not $EnableMovement) { throw 'Movement requires -EnableMovement. First verify sensor communication and clear the surrounding floor.' }
 $client = [Net.Sockets.TcpClient]::new()
+$stream = $null
 try {
     $pending = $client.ConnectAsync($Address,100)
     if (-not $pending.Wait(3000)) { throw 'TCP port 100 connection timed out.' }
@@ -81,11 +84,11 @@ try {
         $data = [Text.Encoding]::ASCII.GetBytes($message)
         $stream.Write($data,0,$data.Length)
     }
-    function Read-Rover([string]$tag) {
+    function Read-Rover([string]$tag, [int]$timeoutMs = 2500, [switch]$AllowNoReply) {
         $timer = [Diagnostics.Stopwatch]::StartNew()
         $buffer = ''
         $lastHeartbeat = -1000
-        while ($timer.ElapsedMilliseconds -lt 2500) {
+        while ($timer.ElapsedMilliseconds -lt $timeoutMs) {
             if ($timer.ElapsedMilliseconds - $lastHeartbeat -ge 500) {
                 Send-Rover '{Heartbeat}'
                 $lastHeartbeat = $timer.ElapsedMilliseconds
@@ -95,13 +98,14 @@ try {
                 if ($value -lt 0) { throw 'Connection closed.' }
                 $buffer += [char]$value
                 if ($value -eq 125) {
+                    [RoverReply]::ThrowIfFault($buffer)
                     if ($buffer -match ('\{' + [regex]::Escape($tag) + '_([^}]+)\}')) { return $Matches[1] }
                     $buffer = ''
                 }
             }
             Start-Sleep -Milliseconds 10
         }
-        throw "No response for $tag. Installed firmware may differ from the stock reference."
+        if (-not $AllowNoReply) { throw "No response for $tag. Installed firmware may differ from the stock reference." }
     }
     if ($Action -eq 'Sensors') {
         foreach ($item in @(@('ultrasound_us',7,2),@('floor_left',8,0),@('floor_middle',8,1),@('floor_right',8,2),@('battery_v',1,0),@('gyro_raw_xyz',2,0),@('accel_raw_xyz',3,0))) {
@@ -147,11 +151,14 @@ try {
     } elseif ($Action -eq 'Move') {
         $directions = @{Left=1;Right=2;Forward=3;Backward=4}
         Send-Rover (@{N=4;D1=$directions[$Direction];D2=$Speed;T=$DurationMs;H='move'} | ConvertTo-Json -Compress)
-        Start-Sleep -Milliseconds ($DurationMs + 100)
+        # Poll for explicit faults during the existing bounded host wait.
+        Read-Rover 'move' ($DurationMs + 100) -AllowNoReply | Out-Null
         Send-Rover '{"N":100}'
         Write-Output 'Timed movement and standby commands sent; verify the physical result.'
     }
 } finally {
-    # Stock camera firmware also sends standby when the TCP connection closes.
+    if ($null -ne $stream) {
+        try { Send-Rover '{"N":100}' } catch { Write-Warning "Stop cleanup failed: $($_.Exception.Message)" }
+    }
     $client.Dispose()
 }

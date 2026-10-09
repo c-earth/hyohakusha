@@ -6,7 +6,7 @@ Probe requests/replies are local test values in estimated volts.
 
 import unittest
 
-from calibration_session import CalibrationSession
+from src.agent.runtime.calibration_session import CalibrationSession
 
 
 class BatteryProbe(CalibrationSession):

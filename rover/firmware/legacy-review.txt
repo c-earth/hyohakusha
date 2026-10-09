@@ -1,0 +1,197 @@
+Legacy firmware review for host calibration and exploration
+Reviewed October 9, 2026. Read-only source review; no legacy code was uploaded.
+
+SCOPE AND EVIDENCE
+
+Reference tree: rover/backups/20261007183240988/src/.
+Covered the full UNO application/mode/command flow and drivers, ESP32 bridge,
+camera setup and every HTTP handler/registration. Supporting libraries were
+reviewed for their APIs, configuration and rover execution paths; this is not
+a formal audit of every generic ArduinoJson template or every disabled MCU port.
+All three compressed camera HTML assets were decoded in memory and their
+client controls inspected; their JavaScript was not executed.
+
+Coverage by retained module (22 text/source/header files):
+- uno.ino, README.txt: startup, watchdog, loop ordering and setup assumptions.
+- ApplicationFunctionSet_xxx0.{cpp,h}: all modes (standby, line tracking,
+  obstacle avoidance, follow, rocker/programming), motor/servo/light commands,
+  sensor reports, key/IR processing, serial parsing and timed completion.
+- DeviceDriverSet_xxx0.{cpp,h}: motor pins/output, servo, ultrasound, floor ADC,
+  voltage conversion, button interrupt/debounce, IR codes and RGB LED.
+- MPU6050_getdata.{cpp,h}: initialization, bias sampling and yaw integration.
+- MPU6050.{cpp,h}: raw/burst reads, ranges, filters/rate, temperature, FIFO,
+  interrupts, motion/freefall flags, offsets, external channels and DMP accessors.
+- I2Cdev.{cpp,h}: selected Wire path, read counts/timeouts, bit/word writes and
+  alternate transport interfaces. Alternate NBWire/other MCU ports are unused.
+- IRremote.cpp, IRremote.h, IRremoteInt.h: receive ISR, protocol decoding,
+  repeat/resume, transmit support and UNO Timer2/pin selection.
+- ArduinoJson-v6.11.1.h: embedded configuration, bounded document allocation,
+  variant conversion, parser/error/depth behavior and unused serializer APIs.
+- esp32.ino: AP/client lifetime, UART/TCP framing, heartbeat and factory status.
+- CameraWebServer_AP.{cpp,h}, camera_pins.h: S3 pin choice, camera/PSRAM setup,
+  sensor defaults, AP settings and initialization-failure path.
+- app_httpd.cpp: JPEG/BMP/stream, timestamps, exposure/image controls, status,
+  low-level camera controls, face features, test endpoints and registered routes.
+- camera_index.h: OV2640/3660/5640 camera UI assets and their requested endpoints.
+
+Downloaded ESP32 source is NOT proven identical to the installed readback.
+Library methods or UI controls do not prove that a feature is wired, enabled,
+exposed over the current protocol or physically verified. Archived binaries and
+duplicate vendor kits were preserved, not executed or treated as active code.
+
+USEFUL FINDINGS ACROSS THE SYSTEM
+
+1. Camera timing and repeatable image configuration (high value now).
+   app_httpd.cpp capture_handler/stream_handler expose camera_fb_t.timestamp as
+   X-Timestamp. The host now preserves the optional capture header alongside
+   host brackets, without changing timing gates or interpreting its clock.
+   /status and /control provide resolution, JPEG quality, exposure, gain, white
+   balance, flips, lens correction and other settings in this reference source.
+   Useful next live observations: read status, check header presence/repetition,
+   compare frame latency and retain exact settings. Freeze any selected image
+   settings during a segment; image changes can invalidate visual comparisons.
+   Changing settings or assuming calibrated intrinsics is not part of this review.
+
+2. Avoidable camera capture latency (future camera candidate).
+   CONFIG_LED_ILLUMINATOR_ENABLED is 1. capture_handler always waits 150 ms before
+   frame acquisition even when led_duty is zero. A conditional illumination wait
+   is a concrete efficiency candidate, after source identity/build compatibility
+   and image freshness are established. Streaming uses a different loop and
+   could avoid repeated HTTP capture overhead, but needs bounded buffering,
+   timestamp parsing and freshness tests. X-Framerate=60 is a literal header,
+   not a measured frame rate. Two frame buffers and CAMERA_GRAB_LATEST are already
+   configured; cached-frame behavior still needs observation on the installed unit.
+
+3. Better IMU evidence without restoring navigation (future UNO protocol).
+   MPU6050::getMotion6 reads accel, temperature and gyro registers in one 14-byte
+   burst, then extracts six axes. Temperature, rate/DLPF, data-ready and FIFO APIs
+   are present too. A checked combined raw packet with sample counter/device time
+   could reduce request overhead and gyro/accel time skew. Adapt the candidate's
+   checked Wire reads; legacy getters ignore read success and can reuse stale bytes.
+   Rate/filter changes alter calibration conditions and must be recorded/validated.
+   FIFO needs overflow/age handling. getMotion9 only calls getMotion6: it supplies
+   no magnetometer values. DMP declarations/accessors are not a working orientation
+   solution in this app. Freefall status cannot establish advance cliff clearance.
+
+4. Separate wheel outputs and straight-line correction (calibration leads).
+   The driver exposes separate PWM/direction for A/right and B/left. Legacy N1
+   selected motors; legacy N4 accepted independent speeds. Those IDs now mean
+   different things and must not be copied into the current host protocol.
+   Forward/backward modes integrated yaw and applied proportional left/right
+   correction, with different gains/clamps by mode. This supports measuring wheel
+   asymmetry and battery/surface dependence, then considering an explicit optional
+   heading-hold mode. It does not justify silently changing current direct PWM.
+   Current bounded turn/forward segments can already collect response data.
+
+5. Yaw/bias code contains methods AND defects.
+   MPU6050_getdata.cpp subtracts a stopped Z offset and integrates with elapsed
+   time. But it negates Z, drops increments below 0.05 degrees, starts with a zero
+   previous timestamp, and reuses the offset accumulator across recalibrations.
+   App standby triggers another calibration based on floor state, not measured
+   stillness. Reuse the bias/integration idea, not those behaviors. Host fresh
+   stopped bias and full-gyro Z integration already address these limitations;
+   neither supplies an independently validated angular scale.
+
+6. Stop implementation needs a deliberate physical characterization.
+   DeviceDriverSet_Motor_control takes boolean directions, but direction_void=3.
+   Passing 3 becomes true, so the switch's direction_void branch is unreachable.
+   Current stop writes zero PWM while the enabled driver path raises STBY; do not
+   describe it as STBY power-off. The separate control_disable path lowers STBY.
+   A future explicit direction/stop enum would clarify this, but choosing coast/
+   brake/standby changes physical response and needs separate stopping tests.
+   This review did not change the compiled candidate or motor-output premise.
+
+7. Stopped scan pattern is useful; old autonomous moves are unsuitable defaults.
+   Obstacle mode stops, pans to 30/90/150, reads ultrasound and selects a direction.
+   Follow mode avoids redundant servo changes using remembered scan state and
+   timed dwell. These suggest sequential stop-observe-plan sampling and caching
+   command state. Old code uses PWM150, blocking 450 ms pan waits and, when boxed
+   in, a blind 500 ms reverse. Do not restore that action policy. The relationship
+   between actual ultrasound pointing and camera pan is not yet established.
+   New host segments remain frozen, short and sequential, with evidence per action.
+
+8. Floor sensors offer environment-specific calibration, not ready cliff safety.
+   Legacy all-three-ADC >950 is a leave-ground heuristic gated only in selected
+   autonomous modes. It is not a universal pre-motor interlock or proof that one
+   wheel approaching an edge will stop in time. Line tracking uses 250..850 and
+   IR threshold adjustment, demonstrating surface-dependent thresholds. Its lost-
+   line recovery contains timed blind turns and windows retaining previous output.
+   Useful data: per-sensor ranges/spread on the prepared surface and controlled
+   labeled changes, paired with image/IMU observations. Host logs these values;
+   a validated floor-change/edge classifier remains unimplemented.
+
+9. Ultrasound units and unknown readings must remain explicit.
+   Old driver casts pulseIn to unsigned int before dividing by 58 and caps the
+   converted result at 150; on UNO that truncates long pulses before conversion.
+   Zero echoes remain zero. Legacy <=20 cm mode treated them as obstacles rather
+   than distinguishing unknown. The default pulseIn timeout in the local AVR core
+   is 1,000,000 us, a significant blocking interval.
+   Current host uses N7 D1=2, raw microseconds and 30,000 us timeout, while stopped.
+   Remaining current-source issue: D1=1 still compares raw pulseUs <=20; it is NOT
+   the old 20 cm threshold. Do not use that boolean mode. Correct/redefine it in a
+   separately scoped firmware change after choosing a calibrated contract.
+
+10. Battery and local status can be improved without adding a second navigator.
+    Legacy voltage conversion is ADC *0.0375 with another 8% compensation.
+    The low-battery counter is not reset by healthy samples, so its nominal
+    consecutive-sample interpretation is wrong; it mainly drives LED behavior.
+    Host N1 <7.0 V/invalid-stop remains the actual current policy. Keep voltage
+    calibration and response-versus-battery observations; do not copy that counter.
+    LEDs can expose ready/fault state with event-based updates. Old per-loop clear/
+    show and some delays add overhead; five-position patterns exceed this kit's
+    NUM_LEDS=1. The disabled LED test writes leds[1], outside that single LED array.
+
+11. Buttons/IR provide possible local stop input, not another motion owner.
+    Legacy button interrupt cycles autonomous modes with 500 ms debounce. IR
+    decoding has known command mappings and a 300 ms manual-command timeout.
+    A separately scoped stop-only input could preserve host navigation ownership.
+    Do not restore mode-cycling/remote-drive contention. IRrecv uses Timer2 at
+    50 us ticks; IR transmit selects UNO pin 3, also the motor STBY pin in this
+    project. Unused transmit support must not be enabled casually. Timer/pin
+    ownership and interrupt load require review before restoring any IR behavior.
+
+12. Protocol/link handling is a stronger priority than extra autonomous modes.
+    Legacy mode changes can bypass a timed drive; one global command tag can be
+    overwritten by reads; stop replies precede later motor-stop work. The built
+    October 9 UNO candidate addresses these paths and checked IMU failure handling.
+    ESP32 reference code still accumulates unbounded String frames, strips spaces,
+    echoes serial bytes to debug output and only completes on a closing brace.
+    A bounded/resynchronizing bridge parser and explicit frame timeouts are useful
+    future work. Preserve N100 priority and one TCP owner. Both UART ends are 9600;
+    raising UNO baud alone breaks compatibility. Missing-heartbeat disconnect is
+    interval-counted, not a verified physical stop deadline. The UNO watchdog
+    resets stalled execution; it is not evidence of a safe stopping trajectory.
+    ArduinoJson syntax success is not command-schema validation: missing/wrong
+    types can convert to zero. Explicit numeric/type/range checks and a version/
+    capability query are sensible follow-up protocol work, preserving N1-N8/N100.
+
+13. Camera features need reachability checks, not just a function-name search.
+    /, /status, /control, /capture, /Test, /test1, /test2 are registered on the
+    camera server; /stream is on the next port. BMP, register, clock, PLL and raw
+    resolution handlers exist but their registrations are commented out. The
+    decoded UI still requests some of those disabled endpoints. /Test routes to
+    streaming on the main server; using it may tie up that server's handler loop.
+    Face detection/recognition is conditional, disabled by default and bypassed
+    for large frames. It is not obstacle detection, scene mapping or odometry.
+    There is an unreturned camera buffer on one face-capture allocation-failure
+    path. S3 setup failures return before AP setup without propagating a ready
+    flag to the bridge setup. These merit cleanup if rebuilding camera firmware;
+    they are not reasons to enable unused features for the next experiment.
+
+PRIORITY FOR THE NEXT CHARGED SESSION
+
+- Use the reorganized host with one owner and the existing built UNO candidate
+  once upload/readback and protocol/stop checks are explicitly covered.
+- Start with fresh stopped evidence, then one short action. Review and select
+  later bounded segments while retaining calibration/reconstruction observations.
+- Check camera headers/status/latency on the installed unit before adopting
+  device timestamps or camera-setting changes. Host header recording is ready.
+- Keep raw floor/echo and motor response data; no invented cliff/distance scale.
+- After the baseline is stable, prioritize explicit stop semantics and a checked
+  combined IMU/time packet, then camera/bridge latency/framing work. Sensor
+  classifiers and heading hold need measured validation rather than legacy gains.
+- Do not restore old autonomous modes, face recognition, broad IR driving or
+  uncalibrated metric control. See calibration/next-test.md for the bounded plan.
+
+No rover connection, firmware rebuild/upload, dependency installation or live
+verification was performed by this review/source-organization task.

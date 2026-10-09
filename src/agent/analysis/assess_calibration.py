@@ -73,8 +73,12 @@ paths and a SIFT detector. Outputs are native-unit JSON and Markdown assessments
         baseline = complete['baseline'] if complete else next((event['payload']['samples'] for event in events if event['kind'] == 'baseline'), [])
         gyro_noise = np.std(np.asarray([sample['gyro'] for sample in baseline]), axis=0) if baseline else np.zeros(3)
         frames = json.loads((self.captures / 'frames.json').read_text())
-        measured = []
-        for trial in trials:
+        measured, unsupported = [], []
+        for index, trial in enumerate(trials):
+            if trial.get('status', 'complete') != 'complete':
+                unsupported.append(dict(index=index, direction=trial.get('direction'),
+                                        reason=trial.get('error', 'Incomplete acquisition')))
+                continue
             telemetry = [sample for sample in trial.get('gyro_telemetry', []) if sample.get('sensor', 'gyro') == 'gyro']
             accel = [sample for sample in trial.get('gyro_telemetry', []) if sample.get('sensor') == 'accel']
             accel_peak = float(np.max(np.linalg.norm(np.asarray([sample['xyz'] for sample in accel])-np.asarray(trial['before']['accel']), axis=1))) if accel else None
@@ -110,10 +114,12 @@ paths and a SIFT detector. Outputs are native-unit JSON and Markdown assessments
                 summary[name] = dict(mean=np.mean(values, axis=0).tolist(), std=np.std(values, axis=0).tolist(),
                                      minimum=np.min(values, axis=0).tolist(), maximum=np.max(values, axis=0).tolist())
         self.output.mkdir(parents=True, exist_ok=False)
-        result = dict(run_complete=complete is not None, baseline=summary, trials=measured, pan_pairs=pan_pairs)
+        result = dict(run_complete=complete is not None, baseline=summary, trials=measured,
+                      unsupported_trials=unsupported, pan_pairs=pan_pairs)
         (self.output / 'measurements.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
         lines = ['# Native-unit calibration assessment', '',
                  f'Completed control sequence: {complete is not None}. Recorded drive trials: {len(trials)}.',
+                 f'Incomplete trials excluded from aggregates: {unsupported}.',
                  f"Safe calibration area is a user assumption. PWM={trials[0]['pwm'] if trials else 'unknown'}; firmware T={trials[0]['duration_ms'] if trials else 'unknown'} ms; early N100 at half duration.", '',
                  '| Direction | Stop mode | Repeats | Median motion px | Median late-frame motion px |',
                  '|---|---|---:|---:|---:|']
@@ -142,8 +148,8 @@ paths and a SIFT detector. Outputs are native-unit JSON and Markdown assessments
                   'Gyro return uses all-axis residual <= max(5 baseline standard deviations, 50 counts), sustained to the end for >=200 ms.',
                   'Times are host receipt times relative to N100 send; sensor acquisition/network latency are unknown.',
                   'A returned gyro indicates low angular response, not absence of translation. Gyro sampling can perturb serial/expiry timing.',
-                  'There is no continuous motion image record, measured physical stopping distance, physical scale, calibrated yaw,',
-                  'held-out predictive validation, disconnect fault trial or exploration clearance controller. Calibration remains partial.',
+                  'Use validate_motion for timed-camera rest and held-out consistency assessment when that evidence exists.',
+                  'This assessment does not establish physical stopping distance, physical scale, calibrated yaw or exploration clearance.',
                   'A 100 ms pulse can be below motor response onset; no-response trials are not proof of calibrated velocity.',
                   'N5/N6 image pairs and raw baseline summaries are in measurements.json. Actual servo angle is unmeasured.',
                   'Only the PWM/duration conditions in trials.json were tested. This report does not establish readiness for autonomous exploration.']

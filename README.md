@@ -1,67 +1,104 @@
 # ELEGOO rover project
 
-This project connects a computer to an ELEGOO Smart Robot Car V4.0 for manual
-control, sensor readings, camera capture, and camera pan tests. The longer-term
-goal is AI-assisted exploration of an accessible surface and 3D reconstruction
-of the interior visible to the camera. A fixed three-pulse forward observation
-pilot is implemented. Autonomous room search, mapping, and 3D reconstruction
-are not implemented yet.
+AI-assisted control of an ELEGOO Smart Robot Car V4.0, with a longer-term goal
+of bounded exploration and reconstruction of the interior visible to its camera.
+Manual tools, bounded calibration and 1-3-action exploration segments with
+calibration evidence are implemented. General autonomous room search, metric pose and 3D reconstruction
+are not implemented.
+
+Start with [handoff](handoff.txt) for current state and
+[next live test](rover/calibration/next-test.md) for a focused proposed session.
+Operating gates are in [calibration procedure](rover/calibration/procedure.md);
+historical evidence is in [results](rover/calibration/results.md) and [journal](journal.md).
+Examples below are usage references, not authorization to operate.
+
+The current host passes 53 offline Python tests, PowerShell reply/launcher checks
+and command import checks. The [charged-session plan](rover/calibration/next-test.md)
+starts with fresh stopped evidence and one short action, then interleaves
+calibration with bounded exploration in the prepared area. Hardware verification
+of the refactored host and compiled firmware candidate remains outstanding.
 
 ## Hardware
 
-- Arduino UNO controller, TB6612FNG motor driver, and MPU6050 IMU.
-- ESP32-S3-WROOM-1 camera module, with 8 MB flash and 8 MB PSRAM.
-- Forward camera and ultrasound sensor, plus downward floor/light sensors.
-- Camera pan servo; no servo angle feedback or motor encoders have been established.
+- Arduino UNO, TB6612FNG motor driver and MPU6050 IMU.
+- ESP32-S3-WROOM-1 camera with 8 MB flash and 8 MB PSRAM.
+- Forward camera/ultrasound, downward floor/light sensors and camera pan servo.
+- No motor encoders or servo position feedback have been established.
 
-Camera access, sensor responses, camera pan/return, repeated short movement
-responses and later image/IMU settling have been observed. Metric pose, absolute
-sensor accuracy and physical stopping distance remain unverified.
-
-## Project structure
-
-```text
-data/<session-start>/         Data grouped by chat session; info.txt is chat name
-  captures/<capture-start>/   Camera images and capture metadata
-  logs/                      Control logs
-  analysis/<analysis-start>/ Offline diagnostics, summaries and source provenance
-rover/
-  calibration/camera.json      Provisional camera pan alignment
-  firmware/
-    info.txt                  Firmware notes and camera provenance
-    src/uno/                  Modified UNO source, starting at uno.ino
-    src/esp32/                Vendor S3 camera source, starting at esp32.ino
-    build/uno/                flash.hex and eeprom.hex compiler outputs
-    build/esp32/              flash.bin full camera flash readback
-  backups/20261007183240988/
-    info.txt                  Backup notes
-    src/uno/                  Original vendor UNO source
-    src/esp32/                Downloaded vendor S3 camera source
-    build/uno/                Original UNO flash and EEPROM readbacks
-    build/esp32/              Full camera flash readback
-  vendor/                     ELEGOO manuals, examples, drivers, and models
-src/
-  control/keyboard-rover.ps1   Interactive keyboard controller
-  tools/rover.ps1             Sensors, capture, movement, stop, and pan tests
-tools/
-  arduino/                    Local Arduino CLI, AVR core, libraries, and cache
-  esptool/                    Local esptool packages and dependencies
-README.md
-```
+Camera access, sensor replies, pan/return, short movement response and later
+image/IMU settling have been observed. Absolute sensor accuracy, calibrated
+heading, metric translation, physical stopping distance and camera intrinsics
+remain unverified. Battery cutoff is N1 <7.0 V; invalid/missing readings fault.
 
 ## Connection setup
 
-Use PowerShell 7 on Windows. Run the commands below from the project root.
-Keyboard control uses Windows Forms and starts disconnected with driving disabled.
+Use PowerShell 7 from the project root. Connect to rover Wi-Fi, set the
+Upload-Cam switch to Cam and close the ELEGOO app. One controller owns TCP.
+Default address: 192.168.4.1; scripts accept an Address override.
 
-Connect the computer to the rover's Wi-Fi, set the Upload–Cam switch to Cam,
-and close the ELEGOO control app before opening TCP control. The default rover
-address is `192.168.4.1`; both scripts accept `-Address` to override it.
-The downloaded camera source uses Wi-Fi channel 9.
+Endpoints: HTTP /status and /capture, MJPEG
+[stream](http://192.168.4.1:81/stream), TCP port 100. The downloaded camera source
+specifies Wi-Fi channel 9; its identity with installed firmware is unproven.
+The keyboard panel has no camera viewer.
 
-The rover exposes HTTP `/status` and `/capture`, an MJPEG stream at
-`http://192.168.4.1:81/stream`, and TCP control on port 100. The keyboard panel
-does not include a camera viewer; view the stream separately.
+## Command-line tools
+
+Current UNO numbering was built/uploaded October 8, 2026, with flash read-back
+verification. Historical journal examples may use superseded IDs.
+
+| Command | Contract |
+|---|---|
+| N1 | Estimated battery V, three fractional digits; conversion accuracy unverified. |
+| N2 | Signed raw gyro XYZ counts; no host bias subtraction in firmware reply. |
+| N3 | Signed raw accelerometer XYZ counts, including gravity. |
+| N4 | Timed drive; T in milliseconds, T=0 bypasses expiry. |
+| N5 | Absolute servo command; pan D1=1, target D2 in command degrees. |
+| N6 | Signed pan increment D1; clamped command state, no angle feedback. |
+| N7 | Ultrasound; D1=2 returns raw echo microseconds, T is timeout microseconds. Zero means unknown. |
+| N8 | Fresh floor ADC; D1=0/1/2 selects left/middle/right. |
+| N100 | Stop/standby; acknowledgment does not prove physical rest. |
+
+Onboard autonomous modes, button/IR control and automatic battery monitoring
+were removed from the installed UNO application. It retains startup gyro
+calibration, servo positioning and LED initialization. Forward/backward use
+requested PWM without the previous gyro correction. The October 9 candidate
+removes the unused startup gyro-offset calculation; it has not been uploaded.
+
+The candidate reports faults as `{H_error_reason}` or `{error_reason}` without
+a tag. Reasons are `imu_not_ready`, `imu_read`, `drive_busy`, `drive_direction`,
+`bad_json` and `frame_too_long`. Motor output stops before the error reply.
+Python acquisition and PowerShell controllers now reject these replies; valid
+installed-firmware replies remain supported. A failed IMU read latches readiness
+false, so N2/N3/N4 refuse subsequent requests until successful initialization at
+board restart. N5/N6/N7 during a drive stop it and reject the blocking request.
+N100 retains `{ok}`; the candidate stops output before acknowledging it.
+
+```powershell
+./src/tools/rover.ps1 -Action Sensors
+./src/tools/rover.ps1 -Action Stop
+./src/tools/rover.ps1 -Action Record -Seconds 10 -FramesPerSecond 2 -SessionTimestamp <17-digit-session-start> -ChatName '<chat-name>'
+```
+
+Sensors reads battery, IMU, raw ultrasound and floor ADC. Ultrasound timeout
+defaults to 30,000 us; host range is 1-1,000,000 us. Record downloads JPEGs with
+host UTC request/receipt times, not exposure times.
+
+The manual Move action requires EnableMovement and accepts PWM 1-100:
+```powershell
+./src/tools/rover.ps1 -Action Move -Direction Forward -DurationMs 200 -Speed 60 -EnableMovement
+```
+
+DurationMs is an unrestricted integer/default 200; T=0 bypasses firmware expiry.
+The tool polls for completion/faults for up to DurationMs+100 ms, then sends N100
+and closes TCP. Extreme values can fail host integer conversion. Stop cleanup is
+also attempted after faults. It does not enforce calibration gates; use the
+bounded calibration entry for experiments.
+
+PanTest performs 90/100/90; FinePanTest performs 100/101/100. Both require
+SessionTimestamp and ChatName. PanStep uses PanStepDegrees (default 1).
+N6 request example: `{"N":6,"D1":1,"H":"pan"}`.
+Command 100 was provisionally identified by the user as forward; increasing
+commands pan left. camera.json is historical command state, not feedback.
 
 ## Keyboard driving
 
@@ -69,212 +106,156 @@ does not include a camera viewer; view the stream separately.
 pwsh -NoProfile -STA -File ./src/control/keyboard-rover.ps1
 ```
 
-Click Connect, then Enable driving when the surrounding floor is clear.
-Hold WASD or arrow keys to drive; release to stop. Space/Escape, losing window
-focus, and closing the window stop and disable driving. Multiple directions stop.
+Starts disconnected and disabled. Connect, then enable driving with clear floor.
+Hold WASD/arrows; release to stop. Space/Escape, focus loss, closing, or multiple
+directions stop and disable driving. Default PWM60 (range 20-100); N4/T250 is
+renewed every 100 ms. No automatic obstacle avoidance. SelfTest is an offline
+execution option and requires task authorization.
 
-Default motor PWM is 60, adjustable from 20 to 100. The controller renews
-timed `N4`, `T=250` ms commands every 100 ms. Heartbeat loss disconnects control.
-Firmware loop timing, network queues, and motor coasting affect physical stopping.
-No automatic obstacle avoidance is implemented.
-
-Check keyboard direction logic without connecting to the rover:
-
-```powershell
-pwsh -NoProfile -File ./src/control/keyboard-rover.ps1 -SelfTest
-```
-
-## Host command numbering
-
-The modified UNO source and host scripts use this numbering:
-
-| Command | Function |
-|---|---|
-| N1 | Battery voltage |
-| N2 | Raw gyro XYZ |
-| N3 | Raw accelerometer XYZ |
-| N4 | Timed drive |
-| N100 | Stop |
-| N5 | Absolute servo |
-| N6 | Incremental pan |
-| N7 | Ultrasound |
-| N8 | Floor sensor |
-
-N100 is the stop command and matches the unchanged camera source's disconnect
-command. This numbering is not built or uploaded; updated host scripts require
-the updated UNO firmware. No alternate command IDs are retained.
-Historical firmware records use old IDs.
-
-## Command-line tools
-
-```powershell
-./src/tools/rover.ps1 -Action Sensors
-./src/tools/rover.ps1 -Action Record -Seconds 10 -FramesPerSecond 2 -SessionTimestamp 20261008231700000 -ChatName 'Example chat'
-./src/tools/rover.ps1 -Action Stop
-```
-
-`Sensors` requests raw ultrasound echo duration in microseconds and the three floor
-sensor values. `-UltrasoundTimeoutUs` sets the requested timeout (1–1,000,000 µs;
-default 30,000). The modified UNO source passes `T` from N7 requests directly
-to the measurement handler, leaving validation to the host, and reports raw pulse duration
-for `D1=2`; zero means timeout. These source changes have not been built or uploaded,
-so the installed firmware still uses the earlier centimeter reply contract.
-Built-in obstacle-avoidance and following modes have been removed from the
-modified UNO source, including button, IR, and N101 selection paths. Line tracking
-and leave-ground detection have also been removed, including N101 and N23 handlers.
-N8 reads the selected floor sensor on request (`D1=0` left, `1` middle, `2` right)
-and replies with its raw ADC value, leaving the current mode unchanged. Floor readings
-are no longer cached or acquired each loop. Floor-triggered standby gyro calibration and heading
-reference resets are removed; startup gyro calibration and direction-change heading
-resets remain. These removals have not been built or uploaded.
-N1 reads battery voltage on request and returns `{H_value}` in volts with three
-fractional digits, leaving the current mode unchanged. It uses the existing
-`ADC × 0.0375 × 1.08` conversion, whose accuracy is unverified. The Sensors action
-includes this reading as `battery_v`; N1 is not yet built or uploaded.
-N2 reads all three gyro axes in one register transaction and returns
-`{H_x,y,z}` as signed raw counts in sensor X/Y/Z order. The Sensors action labels
-this `gyro_raw_xyz`. No offset subtraction, rate conversion, calibration, yaw
-integration, or mode change occurs. Sensor mounting axes and I2C read validity
-are not established by this reply. N2 is not yet built or uploaded.
-N3 reads all three accelerometer axes in one register transaction and returns
-`{H_x,y,z}` as signed raw counts in sensor X/Y/Z order, including gravity's
-contribution. The Sensors action labels this `accel_raw_xyz`. No conversion,
-calibration, or mode change occurs. Mounting axes and read validity are unverified;
-N3 is not yet built or uploaded.
-IR remote handling has been removed from the modified UNO source: no receiver
-initialization, polling, or remote command processing remains in the application.
-Onboard button handling, its interrupt registration, and its driver have also been
-removed from the modified UNO source. The repeated standby motor-stop loop step
-has also been removed; N100 still explicitly stops the motors and selects standby.
-These button changes have not been built or uploaded.
-The three IRremote source/header files have been removed from active UNO source; vendor and backup copies remain. This removal has not been built
-or uploaded.
-The N7 status threshold retains its numeric value
-and now compares raw microseconds in the modified source.
-`Record` downloads JPEG frames. `Stop` sends the standby command.
-The camera reference source sends standby when a TCP control connection closes,
-so a sensor session may also put the rover in standby.
-
-Short movement requires explicit enabling, a verified sensor connection, and
-clear, flat floor:
-
-```powershell
-./src/tools/rover.ps1 -Action Move -Direction Forward -DurationMs 200 -Speed 60 -EnableMovement
-```
-
-Directions are `Forward`, `Backward`, `Left`, and `Right`. This tool accepts
-PWM 1–100; `DurationMs` is an integer in milliseconds, defaults to 200, and has
-no range validation. Firmware `T=0` bypasses timed expiry; the tool still sends
-N100 after its duration wait. PWM is not measured velocity. The modified
-UNO source uses `N4` for timed movement. Legacy N1 direct motor control, legacy N3 untimed
-movement, and N110 clear-to-programming commands and their dedicated handlers
-have been removed from the modified source; N100 stopping remains. These removals
-have not been built or uploaded.
-Legacy N4 independent PWM control and N102 rocker driving have also been removed,
-including their handlers, mode state, and loop calls. N4 remains the host driving
-command and N100 remains the stop command; N4 still bypasses expiry when `T=0`.
-N4 forward/backward output now uses the requested PWM directly on both channels;
-gyro correction and its 10–180 PWM clamp have been removed from driving. Host gyro
-reads remain available. This source change has not been built or uploaded.
-Legacy host LED commands N7, N8, and N105 and their handlers/state have been removed from
-the modified UNO source. Automatic battery monitoring, low-battery warnings, and
-standby LED animation have also been removed. N1 request-time battery readings,
-and LED initialization remain. N100 only stops motors and selects standby; its LED clearing has been removed.
-This removal has not been built or uploaded.
-Heartbeat disconnect timing has not been safety-tested on the installed camera
-firmware and does not replace the short movement duration.
-
-Camera pan tests move the servo, capture three images, and attempt to restore
-the starting command angle:
-
-```powershell
-./src/tools/rover.ps1 -Action PanTest -SessionTimestamp 20261008231700000 -ChatName 'Example chat'      # 90 -> 100 -> 90
-./src/tools/rover.ps1 -Action FinePanTest -SessionTimestamp 20261008231700000 -ChatName 'Example chat'  # 100 -> 101 -> 100
-```
+Observed individual trials support timed expiry, early N100 and stopping after
+TCP close/heartbeat timeout. Physical stop distance, abrupt Wi-Fi-loss behavior
+and reliability across conditions remain unverified.
 
 ## Calibration and capture data
 
-The bounded calibration runner and its evidence requirements are documented in
-[Calibration procedure](rover/calibration/procedure.md). It records repeated
-N1–N8/N100 observations and short drive/early-stop trials through one TCP owner.
-Run only in the safe calibration area assumed by the user. Its native-unit
-measurements do not establish metric pose or autonomous exploration readiness.
+[Next test](rover/calibration/next-test.md) provides the proposed focused recipe.
+run_calibration.ps1 delegates one Python TCP owner. Bounds are PWM60/80 and
+T100/200; stationary-only, turn-only, timed-camera and repeat options are exposed.
+src/tools/run_exploration.ps1 defaults to three PWM60/T200 forward pulses.
+`-Actions 'forward,left,forward'` freezes a segment of up to three forward/left/right
+actions under the same limits. Bias/rest checks and camera/IMU evidence accompany
+every action, so calibration can continue while exploring the prepared area.
+Its >20% echo-shortening trigger applies while heading is unchanged; a turn
+starts a new echo reference. It is not verified collision avoidance.
+
+Python modules run from the project root with `-m`; canonical PowerShell launchers
+under src/tools set that directory and restore it afterward. Existing src/agent
+launcher paths forward their parameters and remain usable:
 
 ```powershell
-pwsh -NoProfile -File ./src/agent/run_calibration.ps1 -SessionTimestamp 20261009003013000 -ChatName 'Exploration calibration' -SafeAreaAssumed
-# After assessing the initial response, compare 200 ms pulses at PWM 80:
-pwsh -NoProfile -File ./src/agent/run_calibration.ps1 -SessionTimestamp 20261009003013000 -ChatName 'Exploration calibration' -SafeAreaAssumed -DurationMs 200 -Speed 80 -DriveOnly
-.venv\Scripts\python.exe src/agent/assess_calibration.py data/<session>/logs/<run>
+.venv\Scripts\python.exe -m src.agent.analysis.validate_motion data/<session>/logs/<run> --output data/<session>/analysis/<new-output>
+.venv\Scripts\python.exe -m src.agent.analysis.integrate_imu data/<session>/logs/<run> --output data/<session>/analysis/<new-output>
 ```
 
-The modified UNO source adds N6 for pan-only incremental control:
-`{"N":27,"D1":1,"H":"pan"}` increases the last commanded pan angle by 1 degree;
-negative `D1` decreases it. The target is clamped to 10–170 degrees. Command state
-starts at the startup angle (90 degrees) and is updated by N5 pan commands.
-It is not position feedback. N6 waits 500 ms, detaches the servo, enters
-programming mode, and sends `{H_ok}` after driver execution. N106 and its legacy
-ten-degree-step handlers have been removed. N5 remains available.
-The host tool exposes `-Action PanStep -PanStepDegrees 1` (default step 1;
-host range -170 to 170). These changes have not been built or uploaded.
+The runtime refuses starts more than 50 ms late and pre-motion camera evidence
+older than 500 ms, and rechecks the 10 s bias limit at dispatch. These provisional
+host limits are offline-tested, not yet live-verified. Failed trials retain
+status/error, partial telemetry and camera evidence. Command send and socket
+receipt brackets exclude subsequent log-write time.
 
-Camera pan alignment is recorded in `rover/calibration/camera.json`. The user
-visually identified command 100 degrees as straight ahead; increasing command
-angles turn left. This is provisional alignment, not a measured physical angle.
-The recorded last command is historical and does not establish the current
-servo position. Scripts do not load the calibration automatically.
+Validation retains unsupported trials with exclusion reasons. Only complete,
+rest-supported trials enter the visual/gyro comparison. Its current heading
+diagnostic integrates the full gyro Z record; historical reports used Euler yaw
+over accel overlap, so their medians are not directly comparable. Cleanup is
+reported as unknown when a positive socket-close record is absent.
 
-Data is grouped under `data/<session-start-timestamp>/`, using New York local time
-and the format `yyyyMMddHHmmssfff`. The session's `info.txt` contains the chat name.
-For Record, PanTest and FinePanTest, pass `-SessionTimestamp` and `-ChatName`;
-reuse both values for every capture in that chat. A different name for an existing
-session is rejected before rover connection. The script does not discover chat
-metadata automatically. Captures go under `captures/<capture-start-timestamp>/`
-inside the session, with their own `info.txt` describing the capture purpose.
-Control logs belong under the session's `logs/` folder; the rover tool does not
-currently generate control logs. Existing data is grouped under
-`data/20261008220100000/`, with session name `setup`.
-Recording currently produces `frame-000000.jpg`, subsequent numbered
-JPEGs, and `frames.csv` with `file`, `request_utc`, and `received_utc` columns.
-Existing sessions also include a first frame named `frame000000.jpg` and pan-test
-images named `center.jpg`, `pan.jpg`, and `return.jpg`.
+One controller serializes movement/pan actions. N2/N3 readings from that owner
+and HTTP-only camera recording may observe the active motion; N100 has priority.
+Keep N5/N6 and blocking N7 out of active drive. Host timing brackets are not
+sensor acquisition times. Gyro/image consistency does not establish absolute
+angle, and acceleration integration is not validated odometry.
+The shared transport refuses overlapping actions, a second pending sensor and
+access from another thread. The sampler drains its final IMU reply before the
+next stopped read. This does not replace closing other controller applications.
+Captures retain an optional `camera_timestamp` from HTTP `X-Timestamp`.
+Its device clock/exposure meaning is unverified; analysis still uses host brackets.
 
-CSV timestamps are computer request/receipt times in UTC, not camera exposure
-times. Actual recording rate is lower than requested because downloads take time.
+Use New York session-start timestamps in yyyyMMddHHmmssfff format and reuse
+the same SessionTimestamp/ChatName within a chat. Metadata conflicts are rejected.
+Captures retain their filenames and purpose info.txt; do not rename old data.
+Calibration logs include JSONL and trials.json; captures include frames.json and
+timed trial subfolders. Manual Record uses frames.csv. Analysis belongs beside
+captures/logs in the same session.
+
+## Project structure
+
+| Path | Purpose |
+|---|---|
+| data/<session>/captures, logs, analysis | Raw observations, command evidence and derived diagnostics. |
+| src/control/ | Shared TCP owner, protocol, pulse scheduler and HTTP-only recorder; keyboard controller. |
+| src/agent/*.ps1 | Compatibility forwarding entries to src/tools. |
+| src/agent/runtime/ | Calibration/exploration decisions, gyro-bias gates and experiment records. |
+| src/agent/analysis/ | Saved-data assessment, inertial mathematics and report commands. |
+| src/agent/tests/ | Offline regressions using fake transports and synthetic data. |
+| .agents/skills/rover-experiment/ | Project skill routing experiment preparation and assessment. |
+| src/tools/ | Manual rover tool and calibration, exploration, baseline and survey launchers. |
+| src/control/keyboard-rover.ps1 | Keyboard controller. |
+| src/control/rover-protocol.psm1 | Shared PowerShell firmware-fault handling. |
+| rover/calibration/ | Procedure, next experiment, results and provisional camera state. |
+| rover/firmware/src, build | Current source and firmware artifacts. |
+| rover/backups/20261007183240988/ | Preserved original sources/readbacks. |
+| rover/vendor/ | Retained vendor manuals, examples, libraries and models. |
+| tools/arduino, tools/esptool | Separate firmware tool installations. |
+
+Unused empty source reservations were removed. Mapping/reconstruction remain
+roadmap work; their absence is explicit in handoff.
 
 ## Firmware and backups
 
-The active UNO source was modified so `N5` camera pan commands accept 1-degree
-steps. It was compiled, uploaded, and verified on October 7, 2026. Built-in modes
-retain their original servo interface. Active `build/uno/flash.hex` is compiled
-application firmware; active `eeprom.hex` is compiler output with no EEPROM data.
+October 8 UNO upload/read-back verified 20,416 application flash bytes.
+Its saved build/uno/flash.hex and eeprom.hex are retained; EEPROM output contains
+no EEPROM data. The October 9 candidate is compiled separately and NOT uploaded:
 
-The backup at `rover/backups/20261007183240988/` contains the original vendor
-UNO source and actual original UNO memory readbacks: 32 KB flash including the
-bootloader and 1 KB EEPROM. Fuse and lock settings were not backed up.
+| UNO build | Flash / 32,256 bytes | Global RAM / 2,048 bytes |
+|---|---:|---:|
+| Installed October 8 | 20,416 | 794 |
+| Candidate October 9 | 19,762 | 664 |
 
-The camera has not been flashed by this project. Both active and backup
-`build/esp32/flash.bin` contain the same full 8 MB camera readback from offset 0,
-including its bootloader, partition table, application, and stored data.
-The downloaded S3 camera source has not been proven to match that readback.
-The UNO and camera backup reads were taken at different times.
+Candidate: `rover/firmware/build/uno-candidate-20261009/uno.ino.hex`.
+It isolates N4's completion tag and timer, services expiry around serial/sensor
+work, validates IMU identity/configuration/read status, and bounds each Wire wait
+to 10,000 us. N5 now acknowledges after its driver returns. Direct PWM, command
+IDs, sensor units, servo limits, N4/T=0 and 9600-baud UART remain unchanged.
+The timeout and cooperative expiry checks do not prove physical stop latency.
 
-Vendor camera build settings are recorded in `rover/firmware/info.txt`:
-ESP32S3 Dev Module, USB CDC On Boot enabled, 8 MB flash, 8M with SPIFFS
-(3 MB APP/1.5 MB SPIFFS), and OPI PSRAM.
+Offline checks passed: UNO build, ten production-timer compile-time assertions,
+41 Python tests, twelve PowerShell reply checks, keyboard SelfTest and parsing of
+four changed PowerShell sources. Hardware I2C fault injection, UART ordering and
+physical stopping have not been exercised on this candidate. Build/check details
+are in journal and candidate verification.json. Upload and live checks remain
+separate work.
+
+Original UNO backups contain full 32 KB flash and 1 KB EEPROM readbacks; fuse
+and lock backup is absent. Camera was not flashed. Active/backup ESP32 flash.bin
+are full 8 MB readbacks; downloaded S3 source is not proven identical.
+Preserve vendor/backup artifacts. The redundant euler.md was removed after its
+bias-corrected gyro integration informed analysis/inertial.py. The original
+legacy function remains in the backup; onboard yaw correction was not restored.
+
+The [legacy review](rover/firmware/legacy-review.txt) covers application modes,
+drivers, IMU/library interfaces, networking, camera handlers and web UI. It
+records useful calibration/efficiency leads and source defects separately from
+available host features. In particular, use raw N7 D1=2: current D1=1 compares
+microseconds against 20 and is not a calibrated obstacle-distance flag.
+
+Vendor camera settings: ESP32S3 Dev Module, USB CDC On Boot, 8 MB flash,
+8M with SPIFFS (3 MB APP/1.5 MB SPIFFS), OPI PSRAM. See firmware/info.txt.
+Ports/connectivity must be re-established before any authorized upload/live check.
 
 ## Development tools and references
 
-Arduino CLI is at `tools/arduino/arduino-cli/arduino-cli.exe`. Its configuration
-is `tools/arduino/arduino-cli.yaml`, which uses absolute paths for this checkout.
-The local installation includes AVR core 1.8.8, Servo 1.3.0, and FastLED 3.2.10.
-No graphical Arduino IDE is installed as part of this project.
+Project Python: .venv\Scripts\python.exe; pyvenv.cfg records Python 3.13.13 and
+base D:\local\python\python_3_13_13\python.exe. OpenCV, NumPy, Pillow, SciPy,
+scikit-image and Matplotlib were installed/import-checked previously.
+Additional installation and execution require explicit task scope.
 
-Esptool 5.4.0 and its dependencies are installed under `tools/esptool`.
-Set `PYTHONPATH` to that directory and invoke `python -m esptool` with the
-compatible Python runtime. Serial port assignments can change when boards reset
-or enter download mode.
+Arduino CLI: tools/arduino/arduino-cli/arduino-cli.exe, configuration
+tools/arduino/arduino-cli.yaml (checkout-specific absolute paths).
+Recorded installation: AVR core 1.8.8, Servo 1.3.0, FastLED 3.2.10.
+Esptool 5.4.0 under tools/esptool requires its compatible Python runtime;
+keep its Python 3.12-specific native packages outside .venv.
 
-The retained vendor package is
-`rover/vendor/ELEGOO Smart Robot Car Kit V4.0 2023.02.01/`.
-The official reference repository is
-[ELEGOO Smart Robot Car Kit V4.0](https://github.com/elegooofficial/ELEGOO-Smart-Robot-Car-Kit-V4.0).
+Authorized offline regression command:
+
+```powershell
+.venv\Scripts\python.exe -B -m unittest discover -s src/agent/tests -t . -v
+pwsh -NoProfile -File ./src/agent/tests/test_firmware_replies.ps1
+pwsh -NoProfile -File ./src/agent/tests/test_launchers.ps1
+```
+
+The repository skill uses the documented
+[local skill layout](https://learn.chatgpt.com/docs/build-skills#where-codex-loads-local-skills).
+The repository skill is available in this chat. Its bundled validator was not
+run successfully during creation because PyYAML was absent.
+
+[Official ELEGOO reference](https://github.com/elegooofficial/ELEGOO-Smart-Robot-Car-Kit-V4.0).

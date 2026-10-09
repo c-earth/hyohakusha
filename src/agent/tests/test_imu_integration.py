@@ -9,7 +9,7 @@ import unittest
 import numpy as np
 from scipy.spatial.transform import Rotation
 
-from integrate_imu import InertialIntegrator
+from src.agent.analysis.inertial import InertialIntegrator
 
 
 class IntegrationTests(unittest.TestCase):
@@ -69,6 +69,26 @@ class IntegrationTests(unittest.TestCase):
         for times in ([0, 0], [1, 0]):
             with self.assertRaises(ValueError):
                 InertialIntegrator.cumulative(times, np.zeros((2, 3)))
+
+    def test_full_gyro_turn_does_not_depend_on_accel_window(self):
+        """Full two-second 10 deg/s gyro support gives 20 nominal degrees."""
+        integrator = InertialIntegrator()
+        gt = np.array([0, 0.3, 1.1, 2.0])
+        gyro = np.tile([0, 0, 1310], (4, 1))
+        full = integrator.yaw_trace(gt, gyro, [0, 0, 0])
+        overlap = integrator.integrate(gt, gyro, [0.5, 1.0],
+                                       np.tile([0, 0, 16384], (2, 1)),
+                                       [0, 0, 0], [0, 0, 16384])
+        self.assertAlmostEqual(full['gyro_z_integral_deg_nominal'][-1], 20)
+        self.assertAlmostEqual(overlap['yaw_deg_nominal'][-1], 10)
+
+    def test_slow_yaw_keeps_small_increments_and_positive_sign(self):
+        """Small increments survive bias removal without legacy deadband."""
+        times = np.linspace(5, 6, 101)
+        gyro = np.tile([0, 0, 300+13.1], (101, 1))
+        trace = InertialIntegrator().yaw_trace(times, gyro, [0, 0, 300])
+        self.assertEqual(trace['gyro_z_integral_deg_nominal'][0], 0)
+        self.assertAlmostEqual(trace['gyro_z_integral_deg_nominal'][-1], 0.1)
 
 
 if __name__ == '__main__':

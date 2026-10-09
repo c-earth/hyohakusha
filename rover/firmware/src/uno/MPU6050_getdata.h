@@ -1,31 +1,25 @@
-/*
- * @Author: ELEGOO
- * @Date: 2019-10-22 11:59:09
- * @LastEditTime: 2020-06-12 17:22:13
- * @LastEditors: Changhua
- * @Description: MPU6050 Data solution
- * @FilePath: 
- */
 #ifndef _MPU6050_getdata_H_
 #define _MPU6050_getdata_H_
+
 #include <Arduino.h>
+
+// Checked raw MPU6050 access; readiness is latched false after a failed read.
+// Recovery requires initialization at board restart, never a silent bias retry.
 class MPU6050_getdata
 {
 public:
-  bool MPU6050_dveInit(void);
-  bool MPU6050_calibration(void);
-  void MPU6050_getRawRotation(int16_t *x, int16_t *y, int16_t *z);
-  void MPU6050_getRawAcceleration(int16_t *x, int16_t *y, int16_t *z);
+  // Return true only after identity, configuration writes and readback succeed.
+  bool MPU6050_dveInit();
+  bool ready() const { return initialized; }
+  // Non-null outputs receive signed raw XYZ counts only on success (true).
+  bool MPU6050_getRawRotation(int16_t *x, int16_t *y, int16_t *z);
+  bool MPU6050_getRawAcceleration(int16_t *x, int16_t *y, int16_t *z);
 
-public:
-  //int16_t ax, ay, az, gx, gy, gz;
-  int16_t gz;
-  //float pith, roll, yaw;
-  unsigned long now, lastTime = 0;
-  float dt;      //Derivative time
-  float agz = 0; //Angle variable
-  long gzo = 0;  //Gyro offset
+private:
+  bool readBytes(uint8_t reg, uint8_t *data, uint8_t count);
+  bool configure(uint8_t reg, uint8_t mask, uint8_t value);
+  bool readVector(uint8_t reg, int16_t *x, int16_t *y, int16_t *z);
+  bool initialized = false;
 };
 
-extern MPU6050_getdata MPU6050Getdata;
 #endif

@@ -18,11 +18,8 @@ void setup()
 
 void loop()
 {
-  //put your main code here, to run repeatedly :
   wdt_reset();
-  Application_FunctionSet.ApplicationFunctionSet_SerialPortDataAnalysis();
-
-  Application_FunctionSet.CMD_ServoControl_xxx0();
   Application_FunctionSet.CMD_CarControlTimeLimit_xxx0();
-  Application_FunctionSet.CMD_ClearAllFunctions_xxx0();
+  Application_FunctionSet.ApplicationFunctionSet_SerialPortDataAnalysis();
+  Application_FunctionSet.CMD_CarControlTimeLimit_xxx0();
 }
