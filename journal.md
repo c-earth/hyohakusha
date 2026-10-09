@@ -2078,3 +2078,43 @@ click handler, F7 dispatch/help and the battery-only request branch. Preserved
 N1 battery reading/validation within Check sensors/F5. Updated README and handoff.
 Verification: focused source read-back/reference search and whitespace inspection.
 No tests, GUI restart or hardware commands performed for this removal.
+
+# October 9, 2026: clickable keyboard launcher
+
+User requested a clickable entry from src. Added src/keyboard-rover.cmd using
+start and pwsh -NoProfile -STA -WindowStyle Hidden, resolving the existing
+controller via %~dp0control\keyboard-rover.ps1. Updated README and handoff.
+Source inspection only; no launcher execution, GUI launch or rover commands.
+
+Launcher follow-up: user reported Windows cannot find pwsh. Get-Command located
+Codex's bundled executable under USERPROFILE/.cache/codex-runtimes/
+codex-primary-runtime/dependencies/native/powershell/pwsh.exe; standard
+C:/Program Files/PowerShell/7/pwsh.exe was absent. Updated launcher to use the
+bundled full path and report/pause if absent. No installation or PATH changes.
+Source/whitespace inspected; launcher has not been executed after this fix.
+
+# October 9, 2026: fixed latest sensor and servo command status
+
+User requested latest sensor readouts and servo tracking, explicitly selecting
+the existing window. Added fixed fields for battery, raw gyro/accelerometer,
+echo and three floor ADCs, retaining the scrolling response log. Matching tagged
+replies update their own fields with host receipt times. Queries append instead
+of replacing log text; history is bounded to recent 20,000 characters when it
+exceeds 30,000. Camera preview resized to fit the right-side status section.
+KeyboardPanState tracks acknowledged N5 D1=1 absolute commands, then N6 increments
+clamped to firmware limits 10-170. Unknown until an absolute reply; no physical
+angle feedback claimed. Disconnect resets tracking/readouts to unknown.
+Verified target controller and firmware N5/N6 acknowledgment/clamp source before
+editing; source read-back and git diff --check passed. No tests, GUI launch,
+rover connection or commands executed for this change. Reopen to load updates.
+
+# October 9, 2026: agenda update from user
+
+User marked item 1 complete: verification of updated keyboard window (latest
+sensor fields, scrolling log, camera preview and servo command tracking).
+This is user-reported verification; no agent-observed telemetry or detailed test
+results were supplied. It does not establish physical servo-angle accuracy or
+complete firmware fault/drive-stop validation. User removed item 5, battery
+runtime measurement, from agenda. Remaining sequence: installed-firmware live
+checks, bounded exploration with calibration, then reconstruction. No execution
+or further implementation authorized/performed by these agenda updates.

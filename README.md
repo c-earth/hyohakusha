@@ -102,6 +102,13 @@ commands pan left. camera.json is historical command state, not feedback.
 
 ## Keyboard driving
 
+Double-click `src/keyboard-rover.cmd` in Windows File Explorer, or run:
+
+The launcher uses the PowerShell 7 executable bundled with Codex under
+`%USERPROFILE%\.cache\codex-runtimes\codex-primary-runtime\dependencies\native\powershell`;
+it does not require `pwsh` on File Explorer's PATH. The terminal command below
+requires `pwsh` to resolve in that terminal.
+
 ```powershell
 pwsh -NoProfile -STA -File ./src/control/keyboard-rover.ps1
 ```
@@ -127,6 +134,14 @@ allow one pending reply. Re-enable driving after completion. Space/Escape cancel
 queued requests and sends Stop; any already-sent request drains or times out.
 Faults, missing replies, or invalid/below-7.0 V battery replies disconnect with
 best-effort Stop. Battery checks are manual, not continuous battery monitoring.
+The window has fixed latest-value fields for each sensor beside the scrolling
+response log. Each reply updates only its own field with host receipt time;
+starting another check preserves earlier values until fresh replies arrive.
+Servo command status starts unknown and is established by an acknowledged
+absolute pan target, then tracks acknowledged increments clamped to 10-170
+degrees. It is commanded position, not measured angle. Disconnect clears latest
+fields and servo tracking to unknown; reconnect requires a new absolute target.
+The on-screen response log retains a bounded recent history; it is not saved.
 Readings and images show host times and may become stale; raw values do not
 establish sensor accuracy, clearance or physical rest. Ultrasound zero is unknown.
 Camera uses HTTP only and can operate while TCP is disconnected. Preview errors

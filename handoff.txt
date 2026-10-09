@@ -3,6 +3,12 @@ Updated: October 9, 2026, America/New_York
 Workspace: D:\projects\hyohakusha
 
 RESUME
+- User reports agenda item 1 complete: updated keyboard window, latest sensor
+  fields, response log, camera preview and servo command tracking checked.
+  User-reported verification; no new agent-observed telemetry or test evidence.
+  Battery-runtime measurement removed from agenda at user's request.
+  Remaining: installed-firmware protocol/drive-stop checks, bounded exploration
+  with calibration, then reconstruction. Launcher/status edits uncommitted.
 - October 9 UNO build uploaded on COM3 after user changed Upload-Cam switch.
   ATmega328P signature 1E 95 0F accepted; all 19,762 flash bytes read-back verified,
   exit 0. Camera/EEPROM not written. Runtime protocol/physical checks outstanding.
@@ -16,14 +22,22 @@ RESUME
   sequential movement/pan, IMU allowed during drive, HTTP camera observation-only.
 
 IMPLEMENTED HOST LAYOUT AND BEHAVIOR
+- Keyboard window now has fixed latest sensor readouts with receipt times and
+  separate scrolling response history. Servo tracks acknowledged command degrees
+  only after an absolute target reply; increments clamp 10-170. Disconnect resets
+  fields/servo to unknown. Source/whitespace checks by agent; user now reports
+  keyboard-window verification complete. Camera preview resized to fit status.
+- Double-click src/keyboard-rover.cmd to launch the keyboard window with pwsh
+  -NoProfile -STA. Uses verified Codex-bundled pwsh path under USERPROFILE,
+  avoiding File Explorer PATH lookup; script resolved via launcher's directory.
+  Launcher source inspected; double-click execution has not been tested.
 - Keyboard manual panel now has all-sensor F5 (including battery), snapshot F6,
   incremental pan F8/F9, target pan F10 and asynchronous live JPEG preview.
   Sensor/pan commands stop/disarm first, serialize through existing TCP and drain
   one pending reply before driving can be re-enabled. Manual battery replies
   invalid/below 7.0 V fault/disconnect; no continuous battery monitor.
-  Syntax and expanded offline SelfTest passed. No GUI or hardware execution;
-  next keyboard check is window layout and stopped sensors/camera/pan under a
-  separately authorized live scope. Snapshot/preview does not save data.
+  Syntax and expanded offline SelfTest passed. User reports keyboard-window
+  check complete; no new agent hardware execution. Snapshot/preview saves no data.
   Separate battery button/F7 removed at user request; source inspection only
   for that removal. Reopen the window to load the updated controls.
 - src/control: RoverConnection transport, protocol, MotionSampler, timed camera,

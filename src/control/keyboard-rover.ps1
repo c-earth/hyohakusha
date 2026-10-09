@@ -49,6 +49,23 @@ class KeyboardCamera {
     }
 }
 
+class KeyboardPanState {
+    # Tracks acknowledged command degrees, never measured servo position.
+    [bool]$Known = $false
+    [int]$Degrees = 0
+
+    [void] Reset() { $this.Known = $false }
+
+    [void] Acknowledge([hashtable]$command) {
+        if ($command.N -eq 5 -and $command.D1 -eq 1) {
+            $this.Degrees = [Math]::Clamp([int]$command.D2, 10, 170)
+            $this.Known = $true
+        } elseif ($command.N -eq 6 -and $this.Known) {
+            $this.Degrees = [Math]::Clamp($this.Degrees + [int]$command.D1, 10, 170)
+        }
+    }
+}
+
 function Get-DriveDirection($Held) {
     $directions = @(@('W','Up',3),@('S','Down',4),@('A','Left',1),@('D','Right',2))
     $active = @($directions | Where-Object { $Held.Contains($_[0]) -or $Held.Contains($_[1]) })
@@ -94,6 +111,8 @@ $script:sentHeartbeat = [DateTime]::MinValue
 $script:wasMoving = $false
 $script:requests = [KeyboardRequestQueue]::new()
 $script:camera = [KeyboardCamera]::new()
+$script:panState = [KeyboardPanState]::new()
+$script:latestFields = @{}
 
 $form = [Windows.Forms.Form]::new()
 $form.Text = 'ELEGOO keyboard drive'
@@ -122,10 +141,30 @@ $status.Text = 'Disconnected. Close the ELEGOO control app before connecting.'
 $status.SetBounds(20,550,960,45)
 $sensors = [Windows.Forms.Button]::new()
 $sensors.Text = 'Check sensors (F5)'; $sensors.SetBounds(20,190,210,35)
+$latest = [Windows.Forms.GroupBox]::new()
+$latest.Text = 'Latest readouts (may be stale; servo = command only)'
+$latest.SetBounds(490,275,490,260)
+$rowNames = @('Battery (estimated V)','Gyro XYZ (raw counts)',
+    'Accelerometer XYZ (raw counts, includes gravity)',
+    'Ultrasound (echo us; zero = unknown)','Floor left (ADC)',
+    'Floor middle (ADC)','Floor right (ADC)','Servo command')
+for ($rowIndex = 0; $rowIndex -lt $rowNames.Count; $rowIndex++) {
+    $rowLabel = [Windows.Forms.Label]::new()
+    $rowLabel.Text = $rowNames[$rowIndex]
+    if ($rowIndex -eq 2) { $rowLabel.Text = 'Accelerometer XYZ (raw + gravity)' }
+    $rowLabel.SetBounds(10,25 + 28 * $rowIndex,245,25)
+    $rowValue = [Windows.Forms.TextBox]::new()
+    $rowValue.ReadOnly = $true; $rowValue.TabStop = $false
+    $rowValue.Text = 'Unknown'; $rowValue.SetBounds(260,22 + 28 * $rowIndex,220,25)
+    $latest.Controls.AddRange(@($rowLabel,$rowValue))
+    $script:latestFields[$rowNames[$rowIndex]] = $rowValue
+}
+$logLabel = [Windows.Forms.Label]::new()
+$logLabel.Text = 'Response log'; $logLabel.SetBounds(20,225,440,15)
 $readings = [Windows.Forms.TextBox]::new()
 $readings.Multiline = $true; $readings.ReadOnly = $true
 $readings.ScrollBars = 'Vertical'; $readings.SetBounds(20,240,440,205)
-$readings.Text = 'No sensor readings yet. Values are raw; ultrasound zero means unknown.'
+$readings.Text = "No sensor readings yet. Times are host receipt times.`r`nValues are raw; ultrasound zero means unknown.`r`n"
 $panMinus = [Windows.Forms.Button]::new()
 $panMinus.Text = 'Pan - (F8)'; $panMinus.SetBounds(20,460,110,35)
 $panPlus = [Windows.Forms.Button]::new()
@@ -147,13 +186,13 @@ $snapshot.Text = 'Snapshot (F6)'; $snapshot.SetBounds(490,20,150,35)
 $live = [Windows.Forms.CheckBox]::new()
 $live.Text = 'Live JPEG preview'; $live.SetBounds(665,25,200,25)
 $picture = [Windows.Forms.PictureBox]::new()
-$picture.SetBounds(490,75,490,400); $picture.SizeMode = 'Zoom'; $picture.BackColor = [Drawing.Color]::Black
+$picture.SetBounds(490,65,490,175); $picture.SizeMode = 'Zoom'; $picture.BackColor = [Drawing.Color]::Black
 $cameraStatus = [Windows.Forms.Label]::new()
 $cameraStatus.Text = 'Camera idle. Snapshot displays a frame without saving a file.'
-$cameraStatus.SetBounds(490,490,490,50)
+$cameraStatus.SetBounds(490,245,490,30)
 $form.Controls.AddRange(@($connect,$arm,$speed,$speedLabel,$instructions,$status,
     $sensors,$readings,$panMinus,$panPlus,$panStep,$stepLabel,$panTarget,$panSet,$panNote,
-    $snapshot,$live,$picture,$cameraStatus))
+    $snapshot,$live,$picture,$cameraStatus,$latest,$logLabel))
 
 function Send-Drive([string]$Text) {
     if ($null -eq $script:stream) { throw 'Disconnected' }
@@ -170,6 +209,8 @@ function Disconnect-Drive([string]$Reason) {
     if ($null -ne $script:client) { $script:client.Dispose() }
     $script:client = $null; $script:stream = $null
     $script:requests.Clear()
+    $script:panState.Reset()
+    foreach ($field in $script:latestFields.Values) { $field.Text = 'Unknown (disconnected)' }
     $arm.Checked = $false; $arm.Enabled = $false
     $connect.Text = 'Connect'
     $status.Text = $Reason
@@ -181,7 +222,7 @@ function Start-PanelRequest([string]$Kind) {
         $arm.Checked = $false
         Stop-Drive
         if ($Kind -eq 'Sensors') {
-            $readings.Text = "Requested $([DateTime]::Now.ToString('HH:mm:ss')); awaiting replies.`r`n"
+            $readings.AppendText("Requested sensors $([DateTime]::Now.ToString('HH:mm:ss')); awaiting replies.`r`n")
             $script:requests.Add('Battery (estimated V)', @{N=1})
             $script:requests.Add('Gyro XYZ (raw counts)', @{N=2})
             $script:requests.Add('Accelerometer XYZ (raw counts, includes gravity)', @{N=3})
@@ -307,8 +348,21 @@ $timer.Add_Tick({
                 $pending = $script:requests.Pending
                 if ($null -ne $pending -and $script:receiving -match ('^\{' + [regex]::Escape($pending.Command.H) + '_([^}]+)\}$')) {
                     $valueText = $Matches[1]
-                    $readings.AppendText("$($pending.Label): $valueText`r`n")
+                    $receivedTime = [DateTime]::Now.ToString('HH:mm:ss')
+                    $readings.AppendText("[$receivedTime] $($pending.Label): $valueText`r`n")
+                    # Bound the display history; latest values have separate fixed fields.
+                    if ($readings.TextLength -gt 30000) { $readings.Text = $readings.Text.Substring($readings.TextLength - 20000) }
+                    $readings.SelectionStart = $readings.TextLength
+                    $readings.ScrollToCaret()
                     if ($pending.Command.N -in 5,6 -and $valueText -ne 'ok') { throw 'Unexpected pan acknowledgment' }
+                    if ($pending.Command.N -in 5,6) {
+                        $script:panState.Acknowledge($pending.Command)
+                        $script:latestFields['Servo command'].Text = if ($script:panState.Known) {
+                            "$($script:panState.Degrees) deg @ $receivedTime"
+                        } else { 'Unknown; set target first' }
+                    } elseif ($script:latestFields.ContainsKey($pending.Label)) {
+                        $script:latestFields[$pending.Label].Text = "$valueText @ $receivedTime"
+                    }
                     if ($pending.Command.N -eq 1) {
                         $volts = 0.0
                         if (-not [double]::TryParse($valueText, [Globalization.NumberStyles]::Float,
