@@ -317,6 +317,7 @@ void DeviceDriverSet_ULTRASONIC::DeviceDriverSet_ULTRASONIC_Test(void)
 Servo myservo; // create servo object to control a servo
 void DeviceDriverSet_Servo::DeviceDriverSet_Servo_Init(unsigned int Position_angle)
 {
+  panAngleDegrees = Position_angle;
   myservo.attach(PIN_Servo_z, 500, 2400); //500: 0 degree  2400: 180 degree
   myservo.attach(PIN_Servo_z);
   myservo.write(Position_angle); //sets the servo position according to the 90（middle）
@@ -381,6 +382,7 @@ void DeviceDriverSet_Servo::DeviceDriverSet_Servo_degrees(uint8_t Servo, unsigne
   if (Servo == 1 || Servo == 3)
   {
     unsigned int angle = constrain(Position_angle, 10, 170);
+    panAngleDegrees = angle;
     myservo.attach(PIN_Servo_z);
     myservo.write(angle);
     delay_xxx(500);
@@ -395,135 +397,15 @@ void DeviceDriverSet_Servo::DeviceDriverSet_Servo_degrees(uint8_t Servo, unsigne
   myservo.detach();
 }
 
-//Servo motor control:Servo motor number and position angle
-void DeviceDriverSet_Servo::DeviceDriverSet_Servo_controls(uint8_t Servo, unsigned int Position_angle)
+/**
+ * Command a signed degree increment on the pan servo only.
+ * stepDegrees is a signed 16-bit step in degrees; positive increases the command
+ * angle. Uses the last commanded panAngleDegrees, not measured position, and
+ * clamps the target to 10-170 degrees. No return value. The pan-only absolute
+ * driver waits 500 ms and detaches; no Y output is commanded by this method.
+ */
+void DeviceDriverSet_Servo::DeviceDriverSet_Servo_increment(int16_t stepDegrees)
 {
-  if (Servo == 1 || Servo == 3) //Servo_z
-  {
-    if (Position_angle <= 1) //minimum angle control
-    {
-      Position_angle = 1;
-    }
-    if (Position_angle >= 17) //maximum angle control
-    {
-      Position_angle = 17;
-    }
-    myservo.attach(PIN_Servo_z);
-    myservo.write(10 * Position_angle);
-    delay_xxx(500);
-  }
-  if (Servo == 2 || Servo == 3) //Servo_y
-  {
-
-    if (Position_angle <= 3) //minimum angle control
-    {
-      Position_angle = 3;
-    }
-    if (Position_angle >= 11) //maximum angle control
-    {
-      Position_angle = 11;
-    }
-    myservo.attach(PIN_Servo_y);
-    myservo.write(10 * Position_angle);
-    delay_xxx(500);
-  }
-  myservo.detach();
+  long target = (long)panAngleDegrees + stepDegrees;
+  DeviceDriverSet_Servo_degrees(1, constrain(target, 10L, 170L));
 }
-
-/*IRrecv*/
-IRrecv irrecv(RECV_PIN); //  Create an infrared receive drive object
-decode_results results;  //  Create decoding object
-void DeviceDriverSet_IRrecv::DeviceDriverSet_IRrecv_Init(void)
-{
-  irrecv.enableIRIn(); //Enable infrared communication NEC
-}
-bool DeviceDriverSet_IRrecv::DeviceDriverSet_IRrecv_Get(uint8_t *IRrecv_Get /*out*/)
-{
-  if (irrecv.decode(&results))
-  {
-    IR_PreMillis = millis();
-    switch (results.value)
-    {
-    case /* constant-expression */ aRECV_upper:
-    case /* constant-expression */ bRECV_upper:
-      /* code */ *IRrecv_Get = 1;
-      break;
-    case /* constant-expression */ aRECV_lower:
-    case /* constant-expression */ bRECV_lower:
-      /* code */ *IRrecv_Get = 2;
-      break;
-    case /* constant-expression */ aRECV_Left:
-    case /* constant-expression */ bRECV_Left:
-      /* code */ *IRrecv_Get = 3;
-      break;
-    case /* constant-expression */ aRECV_right:
-    case /* constant-expression */ bRECV_right:
-      /* code */ *IRrecv_Get = 4;
-      break;
-    case /* constant-expression */ aRECV_ok:
-    case /* constant-expression */ bRECV_ok:
-      /* code */ *IRrecv_Get = 5;
-      break;
-
-    case /* constant-expression */ aRECV_1:
-    case /* constant-expression */ bRECV_1:
-      /* code */ *IRrecv_Get = 6;
-      break;
-    case /* constant-expression */ aRECV_2:
-    case /* constant-expression */ bRECV_2:
-      /* code */ *IRrecv_Get = 7;
-      break;
-    case /* constant-expression */ aRECV_3:
-    case /* constant-expression */ bRECV_3:
-      /* code */ *IRrecv_Get = 8;
-      break;
-    case /* constant-expression */ aRECV_4:
-    case /* constant-expression */ bRECV_4:
-      /* code */ *IRrecv_Get = 9;
-      break;
-    case /* constant-expression */ aRECV_5:
-    case /* constant-expression */ bRECV_5:
-      /* code */ *IRrecv_Get = 10;
-      break;
-    case /* constant-expression */ aRECV_6:
-    case /* constant-expression */ bRECV_6:
-      /* code */ *IRrecv_Get = 11;
-      break;
-    case /* constant-expression */ aRECV_7:
-    case /* constant-expression */ bRECV_7:
-      /* code */ *IRrecv_Get = 12;
-      break;
-    case /* constant-expression */ aRECV_8:
-    case /* constant-expression */ bRECV_8:
-      /* code */ *IRrecv_Get = 13;
-      break;
-    case /* constant-expression */ aRECV_9:
-    case /* constant-expression */ bRECV_9:
-      /* code */ *IRrecv_Get = 14;
-      break;
-    default:
-      // *IRrecv_Get = 5;
-      irrecv.resume();
-      return false;
-      break;
-    }
-    irrecv.resume();
-    return true;
-  }
-  else
-  {
-    return false;
-  }
-}
-
-#if _Test_DeviceDriverSet
-void DeviceDriverSet_IRrecv::DeviceDriverSet_IRrecv_Test(void)
-{
-  if (irrecv.decode(&results))
-  {
-    Serial.print("IRrecv_Test:");
-    Serial.println(results.value);
-    irrecv.resume();
-  }
-}
-#endif

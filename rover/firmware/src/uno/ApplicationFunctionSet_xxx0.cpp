@@ -9,6 +9,7 @@
 #include <avr/wdt.h>
 //#include <hardwareSerial.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "ApplicationFunctionSet_xxx0.h"
 #include "DeviceDriverSet_xxx0.h"
@@ -31,7 +32,6 @@ DeviceDriverSet_Voltage AppVoltage;
 DeviceDriverSet_Motor AppMotor;
 DeviceDriverSet_ULTRASONIC AppULTRASONIC;
 DeviceDriverSet_Servo AppServo;
-DeviceDriverSet_IRrecv AppIRrecv;
 /*f(x) int */
 static boolean
 function_xxx(long x, long s, long e) //f(x)
@@ -69,19 +69,11 @@ enum SmartRobotCarMotionControl
 enum SmartRobotCarFunctionalModel
 {
   Standby_mode,           /*Standby Mode*/
-  TraceBased_mode,        /*Line Tracking Mode*/
-  Rocker_mode = 4,            /*Rocker Control Mode*/
-  CMD_inspect,
+  CMD_inspect = 5,
   CMD_Programming_mode,                   /*Programming Mode*/
   CMD_ClearAllFunctions_Standby_mode,     /*Clear All Functions And Enter Standby Mode*/
-  CMD_ClearAllFunctions_Programming_mode, /*Clear All Functions And Enter Programming Mode*/
-  CMD_MotorControl,                       /*Motor Control Mode*/
-  CMD_CarControl_TimeLimit,               /*Car Movement Direction Control With Time Limit*/
-  CMD_CarControl_NoTimeLimit,             /*Car Movement Direction Control Without Time Limit*/
-  CMD_MotorControl_Speed,                 /*Motor Speed Control*/
-  CMD_ServoControl,                       /*Servo Motor Control*/
-  CMD_LightingControl_TimeLimit,          /*RGB Lighting Control With Time Limit*/
-  CMD_LightingControl_NoTimeLimit,        /*RGB Lighting Control Without Time Limit*/
+  CMD_CarControl_TimeLimit = 10,               /*Car Movement Direction Control With Time Limit*/
+  CMD_ServoControl = 13,                       /*Servo Motor Control*/
 
 };
 
@@ -91,12 +83,9 @@ struct Application_xxx
   SmartRobotCarMotionControl Motion_Control;
   SmartRobotCarFunctionalModel Functional_Mode;
   unsigned long CMD_CarControl_Millis;
-  unsigned long CMD_LightingControl_Millis;
 };
 Application_xxx Application_SmartRobotCarxxx0;
 
-bool ApplicationFunctionSet_SmartRobotCarLeaveTheGround(void);
-void ApplicationFunctionSet_SmartRobotCarLinearMotionControl(SmartRobotCarMotionControl direction, uint8_t directionRecord, uint8_t speed, uint8_t Kp, uint8_t UpperLimit);
 void ApplicationFunctionSet_SmartRobotCarMotionControl(SmartRobotCarMotionControl direction, uint8_t is_speed);
 
 void ApplicationFunctionSet::ApplicationFunctionSet_Init(void)
@@ -108,7 +97,6 @@ void ApplicationFunctionSet::ApplicationFunctionSet_Init(void)
   AppServo.DeviceDriverSet_Servo_Init(90);
   AppKey.DeviceDriverSet_Key_Init();
   AppRBG_LED.DeviceDriverSet_RBGLED_Init(20);
-  AppIRrecv.DeviceDriverSet_IRrecv_Init();
   AppULTRASONIC.DeviceDriverSet_ULTRASONIC_Init();
   AppITR20001.DeviceDriverSet_ITR20001_Init();
   res_error = AppMPU6050getdata.MPU6050_dveInit();
@@ -121,80 +109,6 @@ void ApplicationFunctionSet::ApplicationFunctionSet_Init(void)
   Application_SmartRobotCarxxx0.Functional_Mode = Standby_mode;
 }
 
-/*ITR20001 Check if the car leaves the ground*/
-static bool ApplicationFunctionSet_SmartRobotCarLeaveTheGround(void)
-{
-  if (AppITR20001.DeviceDriverSet_ITR20001_getAnaloguexxx_R() > Application_FunctionSet.TrackingDetection_V &&
-      AppITR20001.DeviceDriverSet_ITR20001_getAnaloguexxx_M() > Application_FunctionSet.TrackingDetection_V &&
-      AppITR20001.DeviceDriverSet_ITR20001_getAnaloguexxx_L() > Application_FunctionSet.TrackingDetection_V)
-  {
-    Application_FunctionSet.Car_LeaveTheGround = false;
-    return false;
-  }
-  else
-  {
-    Application_FunctionSet.Car_LeaveTheGround = true;
-    return true;
-  }
-}
-/*
-  Straight line movement control：For dual-drive motors, due to frequent motor coefficient deviations and many external interference factors, 
-  it is difficult for the car to achieve relative Straight line movement. For this reason, the feedback of the yaw control loop is added.
-  direction：only forward/backward
-  directionRecord：Used to update the direction and position data (Yaw value) when entering the function for the first time.
-  speed：the speed range is 0~255
-  Kp：Position error proportional constant（The feedback of improving location resuming status，will be modified according to different mode），improve damping control.
-  UpperLimit：Maximum output upper limit control
-*/
-static void ApplicationFunctionSet_SmartRobotCarLinearMotionControl(SmartRobotCarMotionControl direction, uint8_t directionRecord, uint8_t speed, uint8_t Kp, uint8_t UpperLimit)
-{
-  static float Yaw; //Yaw
-  static float yaw_So = 0;
-  static uint8_t en = 110;
-  static unsigned long is_time;
-  if (en != directionRecord || millis() - is_time > 10)
-  {
-    AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_void, /*speed_A*/ 0,
-                                           /*direction_B*/ direction_void, /*speed_B*/ 0, /*controlED*/ control_enable); //Motor control
-    AppMPU6050getdata.MPU6050_dveGetEulerAngles(&Yaw);
-    is_time = millis();
-  }
-  //if (en != directionRecord)
-  if (en != directionRecord || Application_FunctionSet.Car_LeaveTheGround == false)
-  {
-    en = directionRecord;
-    yaw_So = Yaw;
-  }
-  //Add proportional constant Kp to increase rebound effect
-  int R = (Yaw - yaw_So) * Kp + speed;
-  if (R > UpperLimit)
-  {
-    R = UpperLimit;
-  }
-  else if (R < 10)
-  {
-    R = 10;
-  }
-  int L = (yaw_So - Yaw) * Kp + speed;
-  if (L > UpperLimit)
-  {
-    L = UpperLimit;
-  }
-  else if (L < 10)
-  {
-    L = 10;
-  }
-  if (direction == Forward) //Forward
-  {
-    AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_just, /*speed_A*/ R,
-                                           /*direction_B*/ direction_just, /*speed_B*/ L, /*controlED*/ control_enable);
-  }
-  else if (direction == Backward) //Backward
-  {
-    AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_back, /*speed_A*/ L,
-                                           /*direction_B*/ direction_back, /*speed_B*/ R, /*controlED*/ control_enable);
-  }
-}
 /*
   Movement Direction Control:
   Input parameters:     1# direction:Forward（1）、Backward（2）、 Left（3）、Right（4）、LeftForward（5）、LeftBackward（6）、RightForward（7）RightBackward（8）
@@ -202,107 +116,57 @@ static void ApplicationFunctionSet_SmartRobotCarLinearMotionControl(SmartRobotCa
 */
 static void ApplicationFunctionSet_SmartRobotCarMotionControl(SmartRobotCarMotionControl direction, uint8_t is_speed)
 {
-  ApplicationFunctionSet Application_FunctionSet;
-  static uint8_t directionRecord = 0;
-  uint8_t Kp, UpperLimit;
   uint8_t speed = is_speed;
-  //Control mode that requires straight line movement adjustment（Car will has movement offset easily in the below mode，the movement cannot achieve the effect of a relatively straight direction
-  //so it needs to add control adjustment）
-  switch (Application_SmartRobotCarxxx0.Functional_Mode)
-  {
-  case Rocker_mode:
-    Kp = 10;
-    UpperLimit = 255;
-    break;
-  case CMD_CarControl_TimeLimit:
-    Kp = 2;
-    UpperLimit = 180;
-    break;
-  case CMD_CarControl_NoTimeLimit:
-    Kp = 2;
-    UpperLimit = 180;
-    break;
-  default:
-    Kp = 10;
-    UpperLimit = 255;
-    break;
-  }
   switch (direction)
   {
   case /* constant-expression */
       Forward:
     /* code */
-    if (Application_SmartRobotCarxxx0.Functional_Mode == TraceBased_mode)
-    {
-      AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_just, /*speed_A*/ speed,
-                                             /*direction_B*/ direction_just, /*speed_B*/ speed, /*controlED*/ control_enable); //Motor control
-    }
-    else
-    { //When moving forward, enter the direction and position approach control loop processing
-      ApplicationFunctionSet_SmartRobotCarLinearMotionControl(Forward, directionRecord, speed, Kp, UpperLimit);
-      directionRecord = 1;
-    }
+    AppMotor.DeviceDriverSet_Motor_control(direction_just, speed, direction_just, speed, control_enable);
 
     break;
   case /* constant-expression */ Backward:
     /* code */
-    if (Application_SmartRobotCarxxx0.Functional_Mode == TraceBased_mode)
-    {
-      AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_back, /*speed_A*/ speed,
-                                             /*direction_B*/ direction_back, /*speed_B*/ speed, /*controlED*/ control_enable); //Motor control
-    }
-    else
-    { //When moving backward, enter the direction and position approach control loop processing
-      ApplicationFunctionSet_SmartRobotCarLinearMotionControl(Backward, directionRecord, speed, Kp, UpperLimit);
-      directionRecord = 2;
-    }
+    AppMotor.DeviceDriverSet_Motor_control(direction_back, speed, direction_back, speed, control_enable);
 
     break;
   case /* constant-expression */ Left:
     /* code */
-    directionRecord = 3;
     AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_just, /*speed_A*/ speed,
                                            /*direction_B*/ direction_back, /*speed_B*/ speed, /*controlED*/ control_enable); //Motor control
     break;
   case /* constant-expression */ Right:
     /* code */
-    directionRecord = 4;
     AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_back, /*speed_A*/ speed,
                                            /*direction_B*/ direction_just, /*speed_B*/ speed, /*controlED*/ control_enable); //Motor control
     break;
   case /* constant-expression */ LeftForward:
     /* code */
-    directionRecord = 5;
     AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_just, /*speed_A*/ speed,
                                            /*direction_B*/ direction_just, /*speed_B*/ speed / 2, /*controlED*/ control_enable); //Motor control
     break;
   case /* constant-expression */ LeftBackward:
     /* code */
-    directionRecord = 6;
     AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_back, /*speed_A*/ speed,
                                            /*direction_B*/ direction_back, /*speed_B*/ speed / 2, /*controlED*/ control_enable); //Motor control
     break;
   case /* constant-expression */ RightForward:
     /* code */
-    directionRecord = 7;
     AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_just, /*speed_A*/ speed / 2,
                                            /*direction_B*/ direction_just, /*speed_B*/ speed, /*controlED*/ control_enable); //Motor control
     break;
   case /* constant-expression */ RightBackward:
     /* code */
-    directionRecord = 8;
     AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_back, /*speed_A*/ speed / 2,
                                            /*direction_B*/ direction_back, /*speed_B*/ speed, /*controlED*/ control_enable); //Motor control
     break;
   case /* constant-expression */ stop_it:
     /* code */
-    directionRecord = 9;
     AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_void, /*speed_A*/ 0,
                                            /*direction_B*/ direction_void, /*speed_B*/ 0, /*controlED*/ control_enable); //Motor control
 
     break;
   default:
-    directionRecord = 10;
     break;
   }
 }
@@ -341,17 +205,6 @@ void ApplicationFunctionSet::ApplicationFunctionSet_SensorDataUpdate(void)
   //   UltrasoundDetectionStatus = function_xxx(UltrasoundPulse_us, 0, ObstacleDetection);
   // }
 
-  { /*value updation for the IR sensors on the line tracking module：for the line tracking mode*/
-    TrackingData_R = AppITR20001.DeviceDriverSet_ITR20001_getAnaloguexxx_R();
-    TrackingDetectionStatus_R = function_xxx(TrackingData_R, TrackingDetection_S, TrackingDetection_E);
-    TrackingData_M = AppITR20001.DeviceDriverSet_ITR20001_getAnaloguexxx_M();
-    TrackingDetectionStatus_M = function_xxx(TrackingData_M, TrackingDetection_S, TrackingDetection_E);
-    TrackingData_L = AppITR20001.DeviceDriverSet_ITR20001_getAnaloguexxx_L();
-    TrackingDetectionStatus_L = function_xxx(TrackingData_L, TrackingDetection_S, TrackingDetection_E);
-    //ITR20001 Check if the car leaves the ground
-    ApplicationFunctionSet_SmartRobotCarLeaveTheGround();
-  }
-
   // acquire timestamp
   // static unsigned long Test_time;
   // if (millis() - Test_time > 200)
@@ -366,33 +219,6 @@ void ApplicationFunctionSet::ApplicationFunctionSet_SensorDataUpdate(void)
 void ApplicationFunctionSet::ApplicationFunctionSet_Bootup(void)
 {
   Application_SmartRobotCarxxx0.Functional_Mode = Standby_mode;
-}
-
-static void CMD_Lighting(uint8_t is_LightingSequence, int8_t is_LightingColorValue_R, uint8_t is_LightingColorValue_G, uint8_t is_LightingColorValue_B)
-{
-  switch (is_LightingSequence)
-  {
-  case 0:
-    AppRBG_LED.DeviceDriverSet_RBGLED_Color(NUM_LEDS, is_LightingColorValue_R, is_LightingColorValue_G, is_LightingColorValue_B);
-    break;
-  case 1: /*Left*/
-    AppRBG_LED.DeviceDriverSet_RBGLED_Color(3, is_LightingColorValue_R, is_LightingColorValue_G, is_LightingColorValue_B);
-    break;
-  case 2: /*Forward*/
-    AppRBG_LED.DeviceDriverSet_RBGLED_Color(2, is_LightingColorValue_R, is_LightingColorValue_G, is_LightingColorValue_B);
-    break;
-  case 3: /*Right*/
-    AppRBG_LED.DeviceDriverSet_RBGLED_Color(1, is_LightingColorValue_R, is_LightingColorValue_G, is_LightingColorValue_B);
-    break;
-  case 4: /*Back*/
-    AppRBG_LED.DeviceDriverSet_RBGLED_Color(0, is_LightingColorValue_R, is_LightingColorValue_G, is_LightingColorValue_B);
-    break;
-  case 5: /*Middle*/
-    AppRBG_LED.DeviceDriverSet_RBGLED_Color(4, is_LightingColorValue_R, is_LightingColorValue_G, is_LightingColorValue_B);
-    break;
-  default:
-    break;
-  }
 }
 
 /*RBG_LED set*/
@@ -504,206 +330,18 @@ void ApplicationFunctionSet::ApplicationFunctionSet_RGB(void)
       {
       }
       break;
-    case /* constant-expression */ TraceBased_mode:
-      /* code */
-      {
-        AppRBG_LED.DeviceDriverSet_RBGLED_xxx(0 /*Duration*/, 2 /*Traversal_Number*/, CRGB::Green);
-      }
-      break;
-    case /* constant-expression */ Rocker_mode:
-      /* code */
-      {
-        AppRBG_LED.DeviceDriverSet_RBGLED_xxx(0 /*Duration*/, 2 /*Traversal_Number*/, CRGB::Violet);
-      }
-      break;
     default:
       break;
     }
   }
 }
 
-/*Rocker control mode*/
-void ApplicationFunctionSet::ApplicationFunctionSet_Rocker(void)
-{
-  if (Application_SmartRobotCarxxx0.Functional_Mode == Rocker_mode)
-  {
-    ApplicationFunctionSet_SmartRobotCarMotionControl(Application_SmartRobotCarxxx0.Motion_Control /*direction*/, Rocker_CarSpeed /*speed*/);
-  }
-}
-
-/*Line tracking mode*/
-void ApplicationFunctionSet::ApplicationFunctionSet_Tracking(void)
-{
-  static boolean timestamp = true;
-  static boolean BlindDetection = true;
-  static unsigned long MotorRL_time = 0;
-  if (Application_SmartRobotCarxxx0.Functional_Mode == TraceBased_mode)
-  {
-    if (Car_LeaveTheGround == false) //Check if the car leaves the ground
-    {
-      ApplicationFunctionSet_SmartRobotCarMotionControl(stop_it, 0);
-      return;
-    }
-
-    // int getAnaloguexxx_L = AppITR20001.DeviceDriverSet_ITR20001_getAnaloguexxx_L();
-    // int getAnaloguexxx_M = AppITR20001.DeviceDriverSet_ITR20001_getAnaloguexxx_M();
-    // int getAnaloguexxx_R = AppITR20001.DeviceDriverSet_ITR20001_getAnaloguexxx_R();
-#if _Test_print
-    static unsigned long print_time = 0;
-    if (millis() - print_time > 500)
-    {
-      print_time = millis();
-      Serial.print("ITR20001_getAnaloguexxx_L=");
-      Serial.println(getAnaloguexxx_L);
-      Serial.print("ITR20001_getAnaloguexxx_M=");
-      Serial.println(getAnaloguexxx_M);
-      Serial.print("ITR20001_getAnaloguexxx_R=");
-      Serial.println(getAnaloguexxx_R);
-    }
-#endif
-    if (function_xxx(TrackingData_M, TrackingDetection_S, TrackingDetection_E))
-    {
-      /*Achieve straight and uniform speed movement*/
-      ApplicationFunctionSet_SmartRobotCarMotionControl(Forward, 100);
-      timestamp = true;
-      BlindDetection = true;
-    }
-    else if (function_xxx(TrackingData_R, TrackingDetection_S, TrackingDetection_E))
-    {
-      /*Turn right*/
-      ApplicationFunctionSet_SmartRobotCarMotionControl(Right, 100);
-      timestamp = true;
-      BlindDetection = true;
-    }
-    else if (function_xxx(TrackingData_L, TrackingDetection_S, TrackingDetection_E))
-    {
-      /*Turn left*/
-      ApplicationFunctionSet_SmartRobotCarMotionControl(Left, 100);
-      timestamp = true;
-      BlindDetection = true;
-    }
-    else ////The car is not on the black line. execute Blind scan
-    {
-      if (timestamp == true) //acquire timestamp
-      {
-        timestamp = false;
-        MotorRL_time = millis();
-        ApplicationFunctionSet_SmartRobotCarMotionControl(stop_it, 0);
-      }
-      /*Blind Detection*/
-      if ((function_xxx((millis() - MotorRL_time), 0, 200) || function_xxx((millis() - MotorRL_time), 1600, 2000)) && BlindDetection == true)
-      {
-        ApplicationFunctionSet_SmartRobotCarMotionControl(Right, 100);
-      }
-      else if (((function_xxx((millis() - MotorRL_time), 200, 1600))) && BlindDetection == true)
-      {
-        ApplicationFunctionSet_SmartRobotCarMotionControl(Left, 100);
-      }
-      else if ((function_xxx((millis() - MotorRL_time), 3000, 3500))) // Blind Detection ...s ?
-      {
-        BlindDetection = false;
-        ApplicationFunctionSet_SmartRobotCarMotionControl(stop_it, 0);
-      }
-    }
-  }
-  else if (false == timestamp)
-  {
-    BlindDetection = true;
-    timestamp = true;
-    MotorRL_time = 0;
-  }
-}
-
-/*Servo motor control*/
-void ApplicationFunctionSet::ApplicationFunctionSet_Servo(uint8_t Set_Servo)
-{
-  static int z_angle = 9;
-  static int y_angle = 9;
-  uint8_t temp_Set_Servo = Set_Servo; 
-
-  switch (temp_Set_Servo)
-  {
-  case 1 ... 2:
-  {
-    if (1 == temp_Set_Servo)
-    {
-      y_angle -= 1;
-    }
-    else if (2 == temp_Set_Servo)
-    {
-      y_angle += 1;
-    }
-    if (y_angle <= 3) //minimum control
-    {
-      y_angle = 3;
-    }
-    if (y_angle >= 11) //maximum control
-    {
-      y_angle = 11;
-    }
-    AppServo.DeviceDriverSet_Servo_controls(/*uint8_t Servo--y*/ 2, /*unsigned int Position_angle*/ y_angle);
-  }
-  break;
-
-  case 3 ... 4:
-  {
-    if (3 == temp_Set_Servo)
-    {
-      z_angle += 1;
-    }
-    else if (4 == temp_Set_Servo)
-    {
-      z_angle -= 1;
-    }
-
-    if (z_angle <= 1) //minimum control
-    {
-      z_angle = 1;
-    }
-    if (z_angle >= 17) //maximum control
-    {
-      z_angle = 17;
-    }
-    AppServo.DeviceDriverSet_Servo_controls(/*uint8_t Servo--z*/ 1, /*unsigned int Position_angle*/ z_angle);
-  }
-  break;
-  case 5:
-    AppServo.DeviceDriverSet_Servo_controls(/*uint8_t Servo--y*/ 2, /*unsigned int Position_angle*/ 9);
-    AppServo.DeviceDriverSet_Servo_controls(/*uint8_t Servo--z*/ 1, /*unsigned int Position_angle*/ 9);
-    break;
-  default:
-    break;
-  }
-}
 /*Standby mode*/
 void ApplicationFunctionSet::ApplicationFunctionSet_Standby(void)
 {
-  static bool is_ED = true;
-  static uint8_t cout = 0;
   if (Application_SmartRobotCarxxx0.Functional_Mode == Standby_mode)
   {
     ApplicationFunctionSet_SmartRobotCarMotionControl(stop_it, 0);
-    if (true == is_ED) //Used to zero yaw raw data(Make sure the car is placed on a stationary surface!)
-    {
-      static unsigned long timestamp; //acquire timestamp
-      if (millis() - timestamp > 20)
-      {
-        timestamp = millis();
-        if (ApplicationFunctionSet_SmartRobotCarLeaveTheGround() /* condition */)
-        {
-          cout += 1;
-        }
-        else
-        {
-          cout = 0;
-        }
-        if (cout > 10)
-        {
-          is_ED = false;
-          AppMPU6050getdata.MPU6050_calibration();
-        }
-      }
-    }
   }
 }
 
@@ -722,205 +360,6 @@ void ApplicationFunctionSet::CMD_inspect_xxx0(void)
     delay(100);
   }
 }
-/*
-  N1:command
-  CMD mode：Car receive the control commands from the APP<motor control command>,perform unidirectional drive of the motor
-  Input parameters:     uint8_t CMD_is_MotorSelection,  Motor selection  1left motor  2right motor  0both motors
-                        uint8_t CMD_is_MotorDirection,  rotation direction selection  1forward  2backward  0stop
-                        uint8_t CMD_is_MotorSpeed,      motor speed  0-250
-  No time limited
-*/
-void ApplicationFunctionSet::CMD_MotorControl_xxx0(uint8_t is_MotorSelection, uint8_t is_MotorDirection, uint8_t is_MotorSpeed)
-{
-  static boolean MotorControl = false;
-  static uint8_t is_MotorSpeed_A = 0;
-  static uint8_t is_MotorSpeed_B = 0;
-  if (Application_SmartRobotCarxxx0.Functional_Mode == CMD_MotorControl)
-  {
-    MotorControl = true;
-    if (0 == is_MotorDirection)
-    {
-      ApplicationFunctionSet_SmartRobotCarMotionControl(stop_it, 0);
-    }
-    else
-    {
-      switch (is_MotorSelection) //motor selection
-      {
-      case 0:
-      {
-        is_MotorSpeed_A = is_MotorSpeed;
-        is_MotorSpeed_B = is_MotorSpeed;
-        if (1 == is_MotorDirection)
-        { //turn forward
-          AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_just, /*speed_A*/ is_MotorSpeed_A,
-                                                 /*direction_B*/ direction_just, /*speed_B*/ is_MotorSpeed_B,
-                                                 /*controlED*/ control_enable); //Motor control
-        }
-        else if (2 == is_MotorDirection)
-        { //turn backward
-          AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_back, /*speed_A*/ is_MotorSpeed_A,
-                                                 /*direction_B*/ direction_back, /*speed_B*/ is_MotorSpeed_B,
-                                                 /*controlED*/ control_enable); //Motor control
-        }
-        else
-        {
-          return;
-        }
-      }
-      break;
-      case 1:
-      {
-        is_MotorSpeed_A = is_MotorSpeed;
-        if (1 == is_MotorDirection)
-        { //turn forward
-          AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_just, /*speed_A*/ is_MotorSpeed_A,
-                                                 /*direction_B*/ direction_void, /*speed_B*/ is_MotorSpeed_B,
-                                                 /*controlED*/ control_enable); //Motor control
-        }
-        else if (2 == is_MotorDirection)
-        { //turn backward
-          AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_back, /*speed_A*/ is_MotorSpeed_A,
-                                                 /*direction_B*/ direction_void, /*speed_B*/ is_MotorSpeed_B,
-                                                 /*controlED*/ control_enable); //Motor control
-        }
-        else
-        {
-          return;
-        }
-      }
-      break;
-      case 2:
-      {
-        is_MotorSpeed_B = is_MotorSpeed;
-        if (1 == is_MotorDirection)
-        { //turn forward
-          AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_void, /*speed_A*/ is_MotorSpeed_A,
-                                                 /*direction_B*/ direction_just, /*speed_B*/ is_MotorSpeed_B,
-                                                 /*controlED*/ control_enable); //Motor control
-        }
-        else if (2 == is_MotorDirection)
-        { //turn backward
-          AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_void, /*speed_A*/ is_MotorSpeed_A,
-                                                 /*direction_B*/ direction_back, /*speed_B*/ is_MotorSpeed_B,
-                                                 /*controlED*/ control_enable); //Motor control
-        }
-        else
-        {
-          return;
-        }
-      }
-      break;
-      default:
-        break;
-      }
-    }
-  }
-  else
-  {
-    if (MotorControl == true)
-    {
-      MotorControl = false;
-      is_MotorSpeed_A = 0;
-      is_MotorSpeed_B = 0;
-    }
-  }
-}
-void ApplicationFunctionSet::CMD_MotorControl_xxx0(void)
-{
-  static boolean MotorControl = false;
-  static uint8_t is_MotorSpeed_A = 0;
-  static uint8_t is_MotorSpeed_B = 0;
-  if (Application_SmartRobotCarxxx0.Functional_Mode == CMD_MotorControl)
-  {
-    MotorControl = true;
-    if (0 == CMD_is_MotorDirection)
-    {
-      ApplicationFunctionSet_SmartRobotCarMotionControl(stop_it, 0);
-    }
-    else
-    {
-      switch (CMD_is_MotorSelection) //motor selection
-      {
-      case 0:
-      {
-        is_MotorSpeed_A = CMD_is_MotorSpeed;
-        is_MotorSpeed_B = CMD_is_MotorSpeed;
-        if (1 == CMD_is_MotorDirection)
-        { //turn forward
-          AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_just, /*speed_A*/ is_MotorSpeed_A,
-                                                 /*direction_B*/ direction_just, /*speed_B*/ is_MotorSpeed_B,
-                                                 /*controlED*/ control_enable); //Motor control
-        }
-        else if (2 == CMD_is_MotorDirection)
-        { //turn backward
-          AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_back, /*speed_A*/ is_MotorSpeed_A,
-                                                 /*direction_B*/ direction_back, /*speed_B*/ is_MotorSpeed_B,
-                                                 /*controlED*/ control_enable); //Motor control
-        }
-        else
-        {
-          return;
-        }
-      }
-      break;
-      case 1:
-      {
-        is_MotorSpeed_A = CMD_is_MotorSpeed;
-        if (1 == CMD_is_MotorDirection)
-        { //turn forward
-          AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_just, /*speed_A*/ is_MotorSpeed_A,
-                                                 /*direction_B*/ direction_void, /*speed_B*/ is_MotorSpeed_B,
-                                                 /*controlED*/ control_enable); //Motor control
-        }
-        else if (2 == CMD_is_MotorDirection)
-        { //turn backward
-          AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_back, /*speed_A*/ is_MotorSpeed_A,
-                                                 /*direction_B*/ direction_void, /*speed_B*/ is_MotorSpeed_B,
-                                                 /*controlED*/ control_enable); //Motor control
-        }
-        else
-        {
-          return;
-        }
-      }
-      break;
-      case 2:
-      {
-        is_MotorSpeed_B = CMD_is_MotorSpeed;
-        if (1 == CMD_is_MotorDirection)
-        { //turn forward
-          AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_void, /*speed_A*/ is_MotorSpeed_A,
-                                                 /*direction_B*/ direction_just, /*speed_B*/ is_MotorSpeed_B,
-                                                 /*controlED*/ control_enable); //Motor control
-        }
-        else if (2 == CMD_is_MotorDirection)
-        { //turn backward
-          AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_void, /*speed_A*/ is_MotorSpeed_A,
-                                                 /*direction_B*/ direction_back, /*speed_B*/ is_MotorSpeed_B,
-                                                 /*controlED*/ control_enable); //Motor control
-        }
-        else
-        {
-          return;
-        }
-      }
-      break;
-      default:
-        break;
-      }
-    }
-  }
-  else
-  {
-    if (MotorControl == true)
-    {
-      MotorControl = false;
-      is_MotorSpeed_A = 0;
-      is_MotorSpeed_B = 0;
-    }
-  }
-}
-
 static void CMD_CarControl(uint8_t is_CarDirection, uint8_t is_CarSpeed)
 {
   switch (is_CarDirection)
@@ -1040,100 +479,6 @@ void ApplicationFunctionSet::CMD_CarControlTimeLimit_xxx0(void)
   }
 }
 /*
-  N3 command
-  CMD mode：Receive the control commands from the APP,perform movement direction and speed control of the car
-  No time limited
-*/
-void ApplicationFunctionSet::CMD_CarControlNoTimeLimit_xxx0(uint8_t is_CarDirection, uint8_t is_CarSpeed)
-{
-  static boolean CarControl = false;
-  if (Application_SmartRobotCarxxx0.Functional_Mode == CMD_CarControl_NoTimeLimit) //enter no time-limited control mode
-  {
-    CarControl = true;
-    CMD_CarControl(is_CarDirection, is_CarSpeed);
-  }
-  else
-  {
-    if (CarControl == true)
-    {
-      CarControl = false;
-    }
-  }
-}
-void ApplicationFunctionSet::CMD_CarControlNoTimeLimit_xxx0(void)
-{
-  static boolean CarControl = false;
-  if (Application_SmartRobotCarxxx0.Functional_Mode == CMD_CarControl_NoTimeLimit) //enter no time-limited control mode
-  {
-    CarControl = true;
-    CMD_CarControl(CMD_is_CarDirection, CMD_is_CarSpeed);
-  }
-  else
-  {
-    if (CarControl == true)
-    {
-      CarControl = false;
-    }
-  }
-}
-
-/*
-  N4 command
-  CMD mode：movement mode<motor control>
-  Receive the control commands from the APP,perform motion control of the left and right motors
-*/
-void ApplicationFunctionSet::CMD_MotorControlSpeed_xxx0(uint8_t is_Speed_L, uint8_t is_Speed_R)
-{
-  static boolean MotorControl = false;
-  if (Application_SmartRobotCarxxx0.Functional_Mode == CMD_MotorControl_Speed)
-  {
-    MotorControl = true;
-    if (is_Speed_L == 0 && is_Speed_R == 0)
-    {
-      ApplicationFunctionSet_SmartRobotCarMotionControl(stop_it, 0);
-    }
-    else
-    {
-      AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_just, /*speed_A*/ is_Speed_L,
-                                             /*direction_B*/ direction_just, /*speed_B*/ is_Speed_R,
-                                             /*controlED*/ control_enable); //Motor control
-    }
-  }
-  else
-  {
-    if (MotorControl == true)
-    {
-      MotorControl = false;
-    }
-  }
-}
-void ApplicationFunctionSet::CMD_MotorControlSpeed_xxx0(void)
-{
-  static boolean MotorControl = false;
-  if (Application_SmartRobotCarxxx0.Functional_Mode == CMD_MotorControl_Speed)
-  {
-    MotorControl = true;
-    if (CMD_is_MotorSpeed_L == 0 && CMD_is_MotorSpeed_R == 0)
-    {
-      ApplicationFunctionSet_SmartRobotCarMotionControl(stop_it, 0);
-    }
-    else
-    {
-      AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_just, /*speed_A*/ CMD_is_MotorSpeed_L,
-                                             /*direction_B*/ direction_just, /*speed_B*/ CMD_is_MotorSpeed_R,
-                                             /*controlED*/ control_enable); //Motor control
-    }
-  }
-  else
-  {
-    if (MotorControl == true)
-    {
-      MotorControl = false;
-    }
-  }
-}
-
-/*
   N5:command
   CMD mode：<servo motor control>
 */
@@ -1146,144 +491,7 @@ void ApplicationFunctionSet::CMD_ServoControl_xxx0(void)
   }
 }
 /*
-  N7:command
-  CMD mode：<Lighting Control>
-  Time limited：Enter programming mode after the time is over
-*/
-void ApplicationFunctionSet::CMD_LightingControlTimeLimit_xxx0(uint8_t is_LightingSequence, uint8_t is_LightingColorValue_R, uint8_t is_LightingColorValue_G, uint8_t is_LightingColorValue_B,
-                                                               uint32_t is_LightingTimer)
-{
-  static boolean LightingControl = false;
-  static boolean LightingControl_TE = false; //Time stamp
-  static boolean LightingControl_return = false;
-
-  if (Application_SmartRobotCarxxx0.Functional_Mode == CMD_LightingControl_TimeLimit) //enter time-limited control mode
-  {
-    LightingControl = true;
-    if (is_LightingTimer != 0) //#1 if the pre-set time is not ... (zero)
-    {
-      if ((millis() - Application_SmartRobotCarxxx0.CMD_LightingControl_Millis) > (is_LightingTimer)) //Check the timestamp
-      {
-        LightingControl_TE = true;
-        FastLED.clear(true);
-        Application_SmartRobotCarxxx0.Functional_Mode = CMD_Programming_mode; /*set mode to programming mode<Waiting for the next set of control commands>*/
-        if (LightingControl_return == false)
-        {
-
-#if _is_print
-          Serial.print('{' + CommandSerialNumber + "_ok}");
-#endif
-          LightingControl_return = true;
-        }
-      }
-      else
-      {
-        LightingControl_TE = false; //There still has time left
-        LightingControl_return = false;
-      }
-    }
-    if (LightingControl_TE == false)
-    {
-      CMD_Lighting(is_LightingSequence, is_LightingColorValue_R, is_LightingColorValue_G, is_LightingColorValue_B);
-    }
-  }
-  else
-  {
-    if (LightingControl == true)
-    {
-      LightingControl_return = false;
-      LightingControl = false;
-      Application_SmartRobotCarxxx0.CMD_LightingControl_Millis = 0;
-    }
-  }
-}
-
-void ApplicationFunctionSet::CMD_LightingControlTimeLimit_xxx0(void)
-{
-  static boolean LightingControl = false;
-  static boolean LightingControl_TE = false; //Time stamp
-  static boolean LightingControl_return = false;
-
-  if (Application_SmartRobotCarxxx0.Functional_Mode == CMD_LightingControl_TimeLimit) //Enter Lighting Control mode with time-limited
-  {
-    LightingControl = true;
-    if (CMD_is_LightingTimer != 0) //#1 if the pre-set time is not ... (zero)
-    {
-      if ((millis() - Application_SmartRobotCarxxx0.CMD_LightingControl_Millis) > (CMD_is_LightingTimer)) //Check the timestamp
-      {
-        LightingControl_TE = true;
-        FastLED.clear(true);
-        Application_SmartRobotCarxxx0.Functional_Mode = CMD_Programming_mode; /*set mode to programming mode<Waiting for the next set of control commands>*/
-        if (LightingControl_return == false)
-        {
-
-#if _is_print
-          Serial.print('{' + CommandSerialNumber + "_ok}");
-#endif
-          LightingControl_return = true;
-        }
-      }
-      else
-      {
-        LightingControl_TE = false; //There still has time left
-        LightingControl_return = false;
-      }
-    }
-    if (LightingControl_TE == false)
-    {
-      CMD_Lighting(CMD_is_LightingSequence, CMD_is_LightingColorValue_R, CMD_is_LightingColorValue_G, CMD_is_LightingColorValue_B);
-    }
-  }
-  else
-  {
-    if (LightingControl == true)
-    {
-      LightingControl_return = false;
-      LightingControl = false;
-      Application_SmartRobotCarxxx0.CMD_LightingControl_Millis = 0;
-    }
-  }
-}
-/*
-  N8:command
-  CMD mode：<Lighting control>
-  No time limited
-*/
-void ApplicationFunctionSet::CMD_LightingControlNoTimeLimit_xxx0(uint8_t is_LightingSequence, uint8_t is_LightingColorValue_R, uint8_t is_LightingColorValue_G, uint8_t is_LightingColorValue_B)
-{
-  static boolean LightingControl = false;
-  if (Application_SmartRobotCarxxx0.Functional_Mode == CMD_LightingControl_NoTimeLimit) //Enter Lighting Control mode without time-limited
-  {
-    LightingControl = true;
-    CMD_Lighting(is_LightingSequence, is_LightingColorValue_R, is_LightingColorValue_G, is_LightingColorValue_B);
-  }
-  else
-  {
-    if (LightingControl == true)
-    {
-      LightingControl = false;
-    }
-  }
-}
-void ApplicationFunctionSet::CMD_LightingControlNoTimeLimit_xxx0(void)
-{
-  static boolean LightingControl = false;
-  if (Application_SmartRobotCarxxx0.Functional_Mode == CMD_LightingControl_NoTimeLimit) //Enter Lighting Control mode without time-limited
-  {
-    LightingControl = true;
-    CMD_Lighting(CMD_is_LightingSequence, CMD_is_LightingColorValue_R, CMD_is_LightingColorValue_G, CMD_is_LightingColorValue_B);
-  }
-  else
-  {
-    if (LightingControl == true)
-    {
-      LightingControl = false;
-    }
-  }
-}
-
-/*
-  N100/N110:command
+  N100:command
   CMD mode：Clear all functions
 */
 void ApplicationFunctionSet::CMD_ClearAllFunctions_xxx0(void)
@@ -1295,15 +503,6 @@ void ApplicationFunctionSet::CMD_ClearAllFunctions_xxx0(void)
     AppRBG_LED.DeviceDriverSet_RBGLED_xxx(0 /*Duration*/, NUM_LEDS /*Traversal_Number*/, CRGB::Black);
     Application_SmartRobotCarxxx0.Motion_Control = stop_it;
     Application_SmartRobotCarxxx0.Functional_Mode = Standby_mode;
-  }
-  if (Application_SmartRobotCarxxx0.Functional_Mode == CMD_ClearAllFunctions_Programming_mode) //Command:N110 Clear all functions and enter programming mode
-  {
-
-    ApplicationFunctionSet_SmartRobotCarMotionControl(stop_it, 0);
-    FastLED.clear(true);
-    AppRBG_LED.DeviceDriverSet_RBGLED_xxx(0 /*Duration*/, NUM_LEDS /*Traversal_Number*/, CRGB::Black);
-    Application_SmartRobotCarxxx0.Motion_Control = stop_it;
-    Application_SmartRobotCarxxx0.Functional_Mode = CMD_Programming_mode;
   }
 }
 
@@ -1340,9 +539,74 @@ void ApplicationFunctionSet::CMD_UltrasoundModuleStatus_xxx0(uint8_t is_get, uns
 #endif
   }
 }
+/**
+ * Read battery voltage on request and send a tagged decimal reply in volts.
+ * No parameters or return value. Uses the existing A3 conversion and the
+ * current CommandSerialNumber string; reports three fractional digits and
+ * leaves the current functional mode unchanged. Calibration is unverified.
+ */
+void ApplicationFunctionSet::CMD_VoltageMeasurement_xxx0(void)
+{
+  const float Voltage = AppVoltage.DeviceDriverSet_Voltage_getAnalogue();
+  char toString[16];
+  dtostrf(Voltage, 1, 3, toString);
+#if _is_print
+  Serial.print('{' + CommandSerialNumber + '_' + toString + '}');
+#endif
+}
+
+/**
+ * Read raw X/Y/Z gyro counts and send a tagged comma-separated reply.
+ * No parameters or return value. Uses CommandSerialNumber as the reply tag and
+ * signed 16-bit sensor counts in X,Y,Z order. Performs no offset subtraction,
+ * unit conversion, calibration, yaw integration, or functional-mode change.
+ */
+void ApplicationFunctionSet::CMD_GyroMeasurement_xxx0(void)
+{
+  int16_t x, y, z;
+  AppMPU6050getdata.MPU6050_getRawRotation(&x, &y, &z);
+  char toString[24];
+  sprintf(toString, "%d,%d,%d", x, y, z);
+#if _is_print
+  Serial.print('{' + CommandSerialNumber + '_' + toString + '}');
+#endif
+}
+
+/**
+ * Read raw X/Y/Z accelerometer counts and send a tagged comma-separated reply.
+ * No parameters or return value. Uses CommandSerialNumber as the reply tag and
+ * signed 16-bit sensor counts in X,Y,Z order, including gravity's contribution.
+ * Performs no unit conversion, calibration, or functional-mode change.
+ */
+void ApplicationFunctionSet::CMD_AccelerationMeasurement_xxx0(void)
+{
+  int16_t x, y, z;
+  AppMPU6050getdata.MPU6050_getRawAcceleration(&x, &y, &z);
+  char toString[24];
+  sprintf(toString, "%d,%d,%d", x, y, z);
+#if _is_print
+  Serial.print('{' + CommandSerialNumber + '_' + toString + '}');
+#endif
+}
+
+/**
+ * Apply a host-requested pan increment and acknowledge after driver execution.
+ * stepDegrees is a signed 16-bit degree step supplied by the host. There is no
+ * return value. Commands only pan, then sets programming mode and sends a reply
+ * tagged with CommandSerialNumber. The acknowledgment does not measure position.
+ */
+void ApplicationFunctionSet::CMD_PanIncrement_xxx0(int16_t stepDegrees)
+{
+  AppServo.DeviceDriverSet_Servo_increment(stepDegrees);
+  Application_SmartRobotCarxxx0.Functional_Mode = CMD_Programming_mode;
+#if _is_print
+  Serial.print('{' + CommandSerialNumber + "_ok}");
+#endif
+}
+
 /*
   N22:command
-  CMD mode：Tracking module receives and feeds back tracing status and data according to the control command of APP terminal
+  CMD mode：Read and return the selected raw floor-sensor value on request.
   Input：
 */
 void ApplicationFunctionSet::CMD_TraceModuleStatus_xxx0(uint8_t is_get)
@@ -1350,65 +614,25 @@ void ApplicationFunctionSet::CMD_TraceModuleStatus_xxx0(uint8_t is_get)
   char toString[10];
   if (0 == is_get) /*Get left IR sensor status*/
   {
-    sprintf(toString, "%d", TrackingData_L);
+    sprintf(toString, "%d", AppITR20001.DeviceDriverSet_ITR20001_getAnaloguexxx_L());
 #if _is_print
     Serial.print('{' + CommandSerialNumber + '_' + toString + '}');
 #endif
-    /*
-    if (true == TrackingDetectionStatus_L)
-    {
-#if _is_print
-      Serial.print('{' + CommandSerialNumber + "_true}");
-#endif
-    }
-    else
-    {
-#if _is_print
-      Serial.print('{' + CommandSerialNumber + "_false}");
-#endif
-    }*/
   }
   else if (1 == is_get) /*Get middle IR sensor status*/
   {
-    sprintf(toString, "%d", TrackingData_M);
+    sprintf(toString, "%d", AppITR20001.DeviceDriverSet_ITR20001_getAnaloguexxx_M());
 #if _is_print
     Serial.print('{' + CommandSerialNumber + '_' + toString + '}');
 #endif
-    /*
-    if (true == TrackingDetectionStatus_M)
-    {
-#if _is_print
-      Serial.print('{' + CommandSerialNumber + "_true}");
-#endif
-    }
-    else
-    {
-#if _is_print
-      Serial.print('{' + CommandSerialNumber + "_false}");
-#endif
-    }*/
   }
   else if (2 == is_get) /*Get right IR sensor status*/
   {
-    sprintf(toString, "%d", TrackingData_R);
+    sprintf(toString, "%d", AppITR20001.DeviceDriverSet_ITR20001_getAnaloguexxx_R());
 #if _is_print
     Serial.print('{' + CommandSerialNumber + '_' + toString + '}');
 #endif
-    /*
-        if (true == TrackingDetectionStatus_R)
-    {
-#if _is_print
-      Serial.print('{' + CommandSerialNumber + "_true}");
-#endif
-    }
-    else
-    {
-#if _is_print
-      Serial.print('{' + CommandSerialNumber + "_false}");
-#endif
-    }*/
   }
-  Application_SmartRobotCarxxx0.Functional_Mode = CMD_Programming_mode; /*set mode to programming mode<Waiting for the next set of control commands>*/
 }
 
 /* 
@@ -1430,10 +654,6 @@ void ApplicationFunctionSet::ApplicationFunctionSet_KeyCommand(void)
     temp_keyValue = get_keyValue;//Serial.println(get_keyValue);
     switch (get_keyValue)
     {
-    case /* constant-expression */ 1:
-      /* code */
-      Application_SmartRobotCarxxx0.Functional_Mode = TraceBased_mode;
-      break;
     case /* constant-expression */ 4:
       /* code */
       Application_SmartRobotCarxxx0.Functional_Mode = Standby_mode;
@@ -1441,113 +661,6 @@ void ApplicationFunctionSet::ApplicationFunctionSet_KeyCommand(void)
     default:
 
       break;
-    }
-  }
-}
-/*Infrared remote control*/
-void ApplicationFunctionSet::ApplicationFunctionSet_IRrecv(void)
-{
-  uint8_t IRrecv_button;
-  static bool IRrecv_en = false;
-  if (AppIRrecv.DeviceDriverSet_IRrecv_Get(&IRrecv_button /*out*/))
-  {
-    IRrecv_en = true;
-    //Serial.println(IRrecv_button);
-  }
-  if (true == IRrecv_en)
-  {
-    switch (IRrecv_button)
-    {
-    case /* constant-expression */ 1:
-      /* code */
-      Application_SmartRobotCarxxx0.Motion_Control = Forward;
-      break;
-    case /* constant-expression */ 2:
-      /* code */
-      Application_SmartRobotCarxxx0.Motion_Control = Backward;
-      break;
-    case /* constant-expression */ 3:
-      /* code */
-      Application_SmartRobotCarxxx0.Motion_Control = Left;
-      break;
-    case /* constant-expression */ 4:
-      /* code */
-      Application_SmartRobotCarxxx0.Motion_Control = Right;
-      break;
-    case /* constant-expression */ 5:
-      /* code */
-      Application_SmartRobotCarxxx0.Functional_Mode = Standby_mode;
-      break;
-    case /* constant-expression */ 6:
-      /* code */ Application_SmartRobotCarxxx0.Functional_Mode = TraceBased_mode;
-      break;
-    case /* constant-expression */ 9:
-      /* code */ if (Application_SmartRobotCarxxx0.Functional_Mode == TraceBased_mode) //Adjust the threshold of the line tracking module to adapt the actual environment
-      {
-        if (TrackingDetection_S < 600)
-        {
-          TrackingDetection_S += 10;
-        }
-      }
-
-      break;
-    case /* constant-expression */ 10:
-      /* code */ if (Application_SmartRobotCarxxx0.Functional_Mode == TraceBased_mode)
-      {
-        TrackingDetection_S = 250;
-      }
-      break;
-    case /* constant-expression */ 11:
-      /* code */ if (Application_SmartRobotCarxxx0.Functional_Mode == TraceBased_mode)
-      {
-        if (TrackingDetection_S > 30)
-        {
-          TrackingDetection_S -= 10;
-        }
-      }
-      break;
-
-    case /* constant-expression */ 12:
-    {
-      if (Rocker_CarSpeed < 255)
-      {
-        Rocker_CarSpeed += 5;
-      }
-    }
-    break;
-    case /* constant-expression */ 13:
-    {
-      Rocker_CarSpeed = 250;
-    }
-    break;
-    case /* constant-expression */ 14:
-    {
-      if (Rocker_CarSpeed > 50)
-      {
-        Rocker_CarSpeed -= 5;
-      }
-    }
-    break;
-
-    default:
-      Application_SmartRobotCarxxx0.Functional_Mode = Standby_mode;
-      break;
-    }
-    /*achieve time-limited control on movement direction part*/
-    if (IRrecv_button < 5)
-    {
-      Application_SmartRobotCarxxx0.Functional_Mode = Rocker_mode;
-      if (millis() - AppIRrecv.IR_PreMillis > 300)
-      {
-        IRrecv_en = false;
-        Application_SmartRobotCarxxx0.Functional_Mode = Standby_mode;
-        AppIRrecv.IR_PreMillis = millis();
-      }
-    }
-    else
-    {
-      IRrecv_en = false;
-      AppIRrecv.IR_PreMillis = millis();
     }
   }
 }
@@ -1598,17 +711,6 @@ void ApplicationFunctionSet::ApplicationFunctionSet_SerialPortDataAnalysis(void)
       /*Please view the following code blocks in conjunction with the Communication protocol for Smart Robot Car.pdf*/
       switch (control_mode_N)
       {
-      case 1: /*<Command：N 1> motor control mode */
-        Application_SmartRobotCarxxx0.Functional_Mode = CMD_MotorControl;
-        CMD_is_MotorSelection = doc["D1"];
-        CMD_is_MotorSpeed = doc["D2"];
-        CMD_is_MotorDirection = doc["D3"];
-
-#if _is_print
-        Serial.print('{' + CommandSerialNumber + "_ok}");
-#endif
-        break;
-
       case 2:                                                                     /*<Command：N 2> */
         Application_SmartRobotCarxxx0.Functional_Mode = CMD_CarControl_TimeLimit; /*Car movement direction and speed control：Time limited mode*/
         CMD_is_CarDirection = doc["D1"];
@@ -1620,23 +722,6 @@ void ApplicationFunctionSet::ApplicationFunctionSet_SerialPortDataAnalysis(void)
 #endif
         break;
 
-      case 3:                                                                       /*<Command：N 3> */
-        Application_SmartRobotCarxxx0.Functional_Mode = CMD_CarControl_NoTimeLimit; /*Car movement direction and speed control：No time limited mode*/
-        CMD_is_CarDirection = doc["D1"];
-        CMD_is_CarSpeed = doc["D2"];
-#if _is_print
-        Serial.print('{' + CommandSerialNumber + "_ok}");
-#endif
-        break;
-
-      case 4:                                                                   /*<Command：N 4> */
-        Application_SmartRobotCarxxx0.Functional_Mode = CMD_MotorControl_Speed; /*motor control:Control motor speed mode*/
-        CMD_is_MotorSpeed_L = doc["D1"];
-        CMD_is_MotorSpeed_R = doc["D2"];
-#if _is_print
-        Serial.print('{' + CommandSerialNumber + "_ok}");
-#endif
-        break;
       case 5:                                                             /*<Command：N 5> */
         Application_SmartRobotCarxxx0.Functional_Mode = CMD_ServoControl; /*servo motor control*/
         CMD_is_Servo = doc["D1"];
@@ -1645,32 +730,6 @@ void ApplicationFunctionSet::ApplicationFunctionSet_SerialPortDataAnalysis(void)
         Serial.print('{' + CommandSerialNumber + "_ok}");
 #endif
         break;
-      case 7:                                                                          /*<Command：N 7> */
-        Application_SmartRobotCarxxx0.Functional_Mode = CMD_LightingControl_TimeLimit; /*Lighting control:Time limited mode*/
-
-        CMD_is_LightingSequence = doc["D1"]; //Lighting (Left, front, right, back and center)
-        CMD_is_LightingColorValue_R = doc["D2"];
-        CMD_is_LightingColorValue_G = doc["D3"];
-        CMD_is_LightingColorValue_B = doc["D4"];
-        CMD_is_LightingTimer = doc["T"];
-        Application_SmartRobotCarxxx0.CMD_LightingControl_Millis = millis();
-#if _is_print
-        //Serial.print('{' + CommandSerialNumber + "_ok}");
-#endif
-        break;
-
-      case 8:                                                                            /*<Command：N 8> */
-        Application_SmartRobotCarxxx0.Functional_Mode = CMD_LightingControl_NoTimeLimit; /*Lighting control:No time limited mode*/
-
-        CMD_is_LightingSequence = doc["D1"]; //Lighting (Left, front, right, back and center)
-        CMD_is_LightingColorValue_R = doc["D2"];
-        CMD_is_LightingColorValue_G = doc["D3"];
-        CMD_is_LightingColorValue_B = doc["D4"];
-#if _is_print
-        Serial.print('{' + CommandSerialNumber + "_ok}");
-#endif
-        break;
-
       case 21: /*<Command：N 21>：ultrasonic sensor: raw echo duration; T is timeout in microseconds */
         CMD_UltrasoundModuleStatus_xxx0(doc["D1"], doc["T"]);
 #if _is_print
@@ -1678,34 +737,29 @@ void ApplicationFunctionSet::ApplicationFunctionSet_SerialPortDataAnalysis(void)
 #endif
         break;
 
-      case 22: /*<Command：N 22>：IR sensor：for line tracking mode */
+      case 22: /*<Command：N 22>：read selected raw floor sensor on request */
         CMD_TraceModuleStatus_xxx0(doc["D1"]);
 #if _is_print
         //Serial.print('{' + CommandSerialNumber + "_ok}");
 #endif
         break;
 
-      case 23: /*<Command：N 23>：Check if the car leaves the ground */
-        if (true == Car_LeaveTheGround)
-        {
-#if _is_print
-          Serial.print('{' + CommandSerialNumber + "_false}");
-#endif
-        }
-        else if (false == Car_LeaveTheGround)
-        {
-#if _is_print
-          Serial.print('{' + CommandSerialNumber + "_true}");
-#endif
-        }
+      case 24: /*<Command：N 24>：read estimated battery voltage on request */
+        CMD_VoltageMeasurement_xxx0();
         break;
 
-      case 110:                                                                                 /*<Command：N 110> */
-        Application_SmartRobotCarxxx0.Functional_Mode = CMD_ClearAllFunctions_Programming_mode; /*Clear all function:Enter programming mode*/
-#if _is_print
-        Serial.print('{' + CommandSerialNumber + "_ok}");
-#endif
+      case 25: /*<Command：N 25>：read raw X/Y/Z gyro counts on request */
+        CMD_GyroMeasurement_xxx0();
         break;
+
+      case 26: /*<Command：N 26>：read raw X/Y/Z accelerometer counts on request */
+        CMD_AccelerationMeasurement_xxx0();
+        break;
+
+      case 27: /*<Command：N 27>：signed pan-only degree increment */
+        CMD_PanIncrement_xxx0(doc["D1"]);
+        break;
+
       case 100:                                                                             /*<Command：N 100> */
         Application_SmartRobotCarxxx0.Functional_Mode = CMD_ClearAllFunctions_Standby_mode; /*Clear all function:Enter standby mode*/
 #if _is_print
@@ -1714,91 +768,6 @@ void ApplicationFunctionSet::ApplicationFunctionSet_SerialPortDataAnalysis(void)
 #endif
         break;
 
-      case 101: /*<Command：N 101> :remote control to switch the car mode*/
-        if (1 == doc["D1"])
-        {
-          Application_SmartRobotCarxxx0.Functional_Mode = TraceBased_mode;
-        }
-
-#if _is_print
-        Serial.print("{ok}");
-        //Serial.print('{' + CommandSerialNumber + "_ok}");
-#endif
-        break;
-
-      case 105: /*<Command：N 105> :FastLED brightness adjustment control command*/
-        if (1 == doc["D1"] && (CMD_is_FastLED_setBrightness < 250))
-        {
-          CMD_is_FastLED_setBrightness += 5;
-        }
-        else if (2 == doc["D1"] && (CMD_is_FastLED_setBrightness > 0))
-        {
-          CMD_is_FastLED_setBrightness -= 5;
-        }
-        FastLED.setBrightness(CMD_is_FastLED_setBrightness);
-
-#if _Test_print
-        //Serial.print('{' + CommandSerialNumber + "_ok}");
-        Serial.print("{ok}");
-#endif
-        break;
-
-      case 106: /*<Command：N 106> */
-      {
-        uint8_t temp_Set_Servo = doc["D1"];
-        if (temp_Set_Servo > 5 || temp_Set_Servo < 1)
-          return;
-        ApplicationFunctionSet_Servo(temp_Set_Servo);
-      }
-
-#if _is_print
-        //Serial.print('{' + CommandSerialNumber + "_ok}");
-        Serial.print("{ok}");
-#endif
-        break;
-      case 102: /*<Command：N 102> :Rocker control mode command*/
-        Application_SmartRobotCarxxx0.Functional_Mode = Rocker_mode;
-        Rocker_temp = doc["D1"];
-        Rocker_CarSpeed = doc["D2"];
-        
-        switch (Rocker_temp)
-        {
-        case 1:
-          Application_SmartRobotCarxxx0.Motion_Control = Forward;
-          break;
-        case 2:
-          Application_SmartRobotCarxxx0.Motion_Control = Backward;
-          break;
-        case 3:
-          Application_SmartRobotCarxxx0.Motion_Control = Left;
-          break;
-        case 4:
-          Application_SmartRobotCarxxx0.Motion_Control = Right;
-          break;
-        case 5:
-          Application_SmartRobotCarxxx0.Motion_Control = LeftForward;
-          break;
-        case 6:
-          Application_SmartRobotCarxxx0.Motion_Control = LeftBackward;
-          break;
-        case 7:
-          Application_SmartRobotCarxxx0.Motion_Control = RightForward;
-          break;
-        case 8:
-          Application_SmartRobotCarxxx0.Motion_Control = RightBackward;
-          break;
-        case 9:
-          Application_SmartRobotCarxxx0.Motion_Control = stop_it;
-          Application_SmartRobotCarxxx0.Functional_Mode = Standby_mode;
-          break;
-        default:
-          Application_SmartRobotCarxxx0.Motion_Control = stop_it;
-          break;
-        }
-#if _is_print
-        // Serial.print('{' + CommandSerialNumber + "_ok}");
-#endif
-        break;
 
       default:
         break;

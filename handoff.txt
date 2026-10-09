@@ -757,3 +757,77 @@ OCTOBER 8, 2026: REMOVE AVOIDANCE AND FOLLOWING MODES
 
 OCTOBER 8, 2026: AVOIDANCE/FOLLOW REMOVAL PUBLICATION
 - User authorized one commit and one push of the five changed files for this removal. This record is included in that same commit; no separate publication-record commit is planned. Publication result will be reported in chat after execution.
+
+OCTOBER 8, 2026: REMOVE LINE TRACKING AND LEAVE-GROUND DETECTION
+- User authorized removing line tracking and leave-ground detection, then confirmed removal after discussion of their IMU dependencies. Removed tracking mode/function/declaration/loop call, mode LED and direct-motor branches, button/IR selection and threshold adjustment, tracking statuses/thresholds, leave-ground function/flag/declarations, and N23/N101 handlers from active UNO source.
+- Removed floor-triggered standby gyro calibration and the floor-triggered heading-reference reset condition. Standby stopping, startup gyro calibration, straight-driving gyro correction, and direction-change heading-reference resets remain. Other mode numeric values remain preserved by Rocker_mode=4.
+- Kept raw floor drivers, loop-cached TrackingData_L/M/R, and N22 raw replies and programming-mode transition. No request-time reading conversion was implemented; the host-command-driven loop is an accepted future plan to implement one sensor at a time.
+- Updated README. Verified application diff, searches showing no removed mode/flag/threshold/function/N23/N101 references in active UNO source, retained startup calibration/N22/raw cache paths, header/loop diffs and whitespace checks. No build, tests, upload, commit, push, or hardware operations performed. Installed firmware remains unchanged.
+
+OCTOBER 8, 2026: N22 PRESERVES CURRENT MODE
+- User explicitly requested removal of the programming-mode trigger after N22. Verified the assignment at the end of CMD_TraceModuleStatus_xxx0 and removed only that assignment. Cached raw readings and reply behavior remain unchanged.
+- README now states N22 leaves the current mode unchanged. This supersedes earlier records that its programming-mode transition remains.
+- Verified saved N22 handler and scoped whitespace check by read-only inspection. No build, tests, upload, commit, push, or hardware operations performed.
+
+OCTOBER 8, 2026: REQUEST-TIME FLOOR SENSOR READS
+- User explicitly authorized implementation of direct N22 readings and removal of the floor cache. N22 now calls the selected ITR20001 raw-read method before formatting its reply: D1=0 left, 1 middle, 2 right. Reply format and current-mode preservation remain unchanged.
+- Removed the per-loop floor acquisition block and TrackingData_L/M/R members. Sensor initialization and raw driver methods remain; voltage update still runs through SensorDataUpdate and is outside this change.
+- Updated README. Verified saved N22 branches, all active raw-read call sites, absence of TrackingData members, and scoped whitespace checks through read-only inspection. No build, tests, upload, commit, push, or hardware operations performed. Earlier cached-reading records are superseded; source changes have not been deployed.
+
+OCTOBER 8, 2026: HOST BATTERY-VOLTAGE MEASUREMENT
+- User authorized adding host-requested battery measurement and specified volts rather than raw ADC output. Added unused command N24 and CMD_VoltageMeasurement_xxx0 declaration/implementation. It takes a fresh reading through the existing voltage driver, formats three decimal places using dtostrf, and replies {H_value} without changing functional mode.
+- Existing ADC*0.0375*1.08 conversion, periodic voltage sampling, low-voltage flag and LED warnings remain unchanged. Reported volts are an unverified estimate; displayed precision does not establish accuracy.
+- Host Sensors action now includes battery_v via N24. Updated README with command, units, conversion and deployment limitation.
+- Verified command dispatch, declaration/implementation, existing driver conversion, host request and documentation by read-only inspection; scoped whitespace checks passed. No builds, tests, script execution, uploads, commits, pushes or hardware operations performed. N24 requires deployment of the modified UNO firmware before use.
+
+OCTOBER 8, 2026: HOST RAW THREE-AXIS GYRO READ
+- User authorized host-read capability, selected all three axes and raw values. Added N25 with CMD_GyroMeasurement_xxx0 and a MPU6050_getRawRotation wrapper around the existing six-byte getRotation transaction. Tagged reply {H_x,y,z} contains signed sensor X/Y/Z raw counts.
+- Host Sensors action includes gyro_raw_xyz. README documents units/order, deployment and validity limitations. Calibration, calibration accumulator, yaw integration, and motor correction remain unchanged; no recalibration command was implemented.
+- Verified declarations, wrapper/call chain, N25 dispatch, buffer capacity for three signed 16-bit values, host parser compatibility with comma-separated payload, and whitespace checks by read-only source inspection. Underlying getRotation does not propagate I2C read success; host reply is not proof of valid physical measurement. No build, tests, uploads, commits, pushes, or hardware operations performed.
+
+OCTOBER 8, 2026: HOST RAW THREE-AXIS ACCELEROMETER READ
+- User authorized adding host accelerometer read. Following the raw three-axis gyro interface, added unused command N26 with CMD_AccelerationMeasurement_xxx0 and MPU6050_getRawAcceleration wrapper around existing getAcceleration. Reply {H_x,y,z} contains signed raw sensor X/Y/Z counts, including gravity, without conversion/calibration/mode changes.
+- Host Sensors action includes accel_raw_xyz. Updated README. Existing gyro control and initialization ranges remain unchanged; no accelerometer-based control implemented.
+- Verified driver availability, declarations/wrapper/dispatch, buffer capacity and host reply compatibility, and whitespace checks by source inspection. Underlying read success is not propagated; hardware readings/axes remain unverified. No build, tests, script execution, upload, commit, push, or hardware operations performed.
+
+OCTOBER 8, 2026: REMOVE IR REMOTE HANDLING
+- User explicitly requested removal of IR remote function. Removed ApplicationFunctionSet_IRrecv implementation/declaration/loop call, AppIRrecv object and initialization, DeviceDriverSet_IRrecv class and its driver implementations/receiver globals, IRremote include and remote-code constants from the device driver files.
+- Bundled IRremote library source files remain; no library or vendor artifact deletion performed. Button handling and host commands remain unchanged. README documents source-only removal.
+- Verified changed source boundaries, absence of IR handling references in application/device-driver/loop files, and scoped whitespace check through read-only inspection. No build, tests, uploads, commits, pushes or hardware operations performed.
+
+OCTOBER 8, 2026: PAN-ONLY INCREMENTAL COMMAND; REMOVE N106
+- User authorized adding incremental mode excluding Y and removing N106. Added unused command N27 with signed int16 degree step in D1, pan-only driver increment, and tagged acknowledgment after driver execution. Target uses shared encapsulated last commanded pan angle, clamped 10-170 degrees; starts at startup command 90 and updates on N5 pan writes. Wide intermediate avoids signed-add overflow. No measured position feedback introduced.
+- N27 waits through existing 500 ms pan driver, detaches and enters programming mode; no Y output in its call path. N5 absolute interface and existing Y support/startup remain unchanged. Removed N106 dispatch, ApplicationFunctionSet_Servo helper/declaration, and unused ten-degree Servo_controls implementation/declaration.
+- Host tool exposes PanStep with PanStepDegrees default 1, validated -170 to 170. README documents protocol, limits, state semantics and deployment status.
+- Verified declarations, dispatch/call chain, state initialization/N5 synchronization, removal reference search and scoped whitespace checks by source inspection. No builds, tests, scripts, uploads, commits, pushes or hardware operations performed. Deployment and physical behavior remain unverified.
+
+OCTOBER 8, 2026: REMOVE N1, N3 AND N110
+- User explicitly requested removal of N1, N3 and N110. Removed dispatch branches, both overloads of direct-motor and untimed-car handlers, their declarations/loop calls, N1 fields, dedicated enum modes, N3 motor-correction case and N110 clear-to-programming execution branch.
+- Preserved existing remaining enum values by explicitly assigning timed-car mode 10 and motor-speed mode 12. N2 and N100 remain, including N2 zero-duration behavior; N4 and N102 are unchanged. Programming mode remains for other command completion paths.
+- Updated README. Verified removal references, retained N2/N100 paths, header/loop changes and whitespace checks by read-only source inspection. No builds, tests, uploads, commits, pushes or hardware operations performed.
+
+OCTOBER 8, 2026: REMOVE N4 AND N102
+- User explicitly requested removal of both N4 and N102. Removed command branches, both N4 handler overloads, rocker handler, declarations/loop calls, dedicated modes/state fields, rocker motor-correction and LED cases. Preserved remaining numeric mode values with explicit CMD_inspect=5 and CMD_ServoControl=13.
+- N2 timed driving and N100 stopping remain; N2 T=0 expiry bypass remains unchanged. README documents removals. Historical vendor README.txt retains its original N102 history; not rewritten as active capability.
+- Verified command-switch ending, remaining references in executable application/header/loop files, and whitespace checks through read-only inspection. No build, tests, uploads, commits, pushes, or hardware operations performed.
+
+OCTOBER 8, 2026: DIRECT PWM DRIVING WITHOUT GYRO CORRECTION
+- User explicitly confirmed removal of gyro correction from driving. Replaced forward/backward correction calls with direct same-PWM motor outputs. Removed the linear correction implementation/prototype, yaw target/direction history and gain/clamp setup from movement control.
+- Turning and stop driver paths remain unchanged. Requested uint8 PWM is now passed directly for forward/backward, without the former correction clamp of 10-180. N2 timing and T=0 behavior unchanged.
+- Host gyro/accelerometer commands, startup gyro initialization/calibration, and unused library yaw integration method remain. No gyro I2C call remains in driving; startup calibration is not removed.
+- Updated README. Verified direct motor calls, absence of correction references in application source, retained measurement/startup calls and whitespace check by read-only inspection. No build, tests, uploads, commits, pushes, or hardware operations performed.
+
+OCTOBER 8, 2026: REMOVE HOST LED COMMANDS
+- User requested removal of all discussed host LED commands N7/N8/N105. Removed their dispatch, lighting helper and handler implementations/overloads, declarations/loop calls, lighting modes/timer/color fields and host brightness state.
+- Preserved automatic battery warning and standby LED behavior per earlier skip decision. LED initialization, low-level driver, N100 LED clear remain unchanged. Updated README.
+- Verified source boundaries, absence of removed host-lighting references, retained RGB/battery paths and whitespace checks through read-only inspection. No build, tests, uploads, commits, pushes, or hardware operations performed.
+
+CURRENT RESUME SUMMARY: OCTOBER 8, 2026
+- Latest request: update this handoff, commit and push pending changes. Keep one commit including this record and one push; report publication outcome in chat without creating a second record commit. Current branch codex/sequential-rover-control, origin https://github.com/c-earth/hyohakusha.git. Untracked .codex/ is excluded.
+- Pending source changes since 6df654a: remove line tracking/leave-ground and their floor-triggered IMU behavior; N22 fresh selected raw read, no mode change; N24 estimated battery volts; N25 raw gyro XYZ; N26 raw accelerometer XYZ; N27 signed pan-only degree increments synchronized with N5 command state; remove IR handling/N106/N1/N3/N110/N4/N102/N7/N8/N105; replace driving gyro correction with direct requested PWM. Details and evidence recorded above.
+- Remaining host commands: N2 timed direct-PWM drive, N5 absolute servo, N21 ultrasound, N22 floor, N24 battery, N25 gyro, N26 accelerometer, N27 incremental pan, N100 stop-to-standby. N21 D1=1 still interprets raw pulse against unchanged threshold 20; D1=2 returns raw microseconds with host-supplied T. N2 T is milliseconds; T=0 expiry bypass remains. N5 includes existing Y support, while N27 commands only pan.
+- Actual loop: watchdog refresh -> periodic battery sampling -> button handling -> automatic LEDs -> standby stop -> serial command dispatch -> pending N5 servo -> N2 drive/expiry -> N100 clear/stop. Sensors and N27 execute synchronously within dispatch. Automatic battery/LED and button behavior were explicitly skipped for removal. Startup gyro calibration and servo positioning remain.
+- Accepted direction: progressively move toward host-command-driven firmware, reviewing one sensor/function at a time. Do not implement the entire loop redesign based on that plan alone. User requested step-by-step loop explanation, heard watchdog step, then redirected to this handoff/commit/push task. Resume discussion from the requested point, not an assumed authorization for more changes.
+- Gyro recalibration command and accumulator reset were discussed but not implemented. Current calibration still averages Z only, and its repeated-call accumulator defect remains. Raw gyro/accelerometer replies perform no calibration or unit conversion. Camera and onboard button remain unchanged by user choice.
+- Verification to date: focused read-only source/caller inspection, reference searches, reply/buffer reasoning, and git diff --check. No compilation, project scripts/tests, simulations, hardware readings, rover movement, or firmware upload performed for these changes. Nothing here establishes deployed behavior or physical stopping. All roadmap completion gates remain open.
+- Before compilation/upload, obtain explicit execution/hardware scope. Preserve firmware backups; confirm target settings and report compiler results rather than assuming build success. No dependency installation authorized. Do not add cleanup/refactoring as incidental next work.

@@ -53,6 +53,30 @@ bool MPU6050_getdata::MPU6050_dveInit(void)
   // gzo /= times; //Calculate gyroscope offset
   return false;
 }
+/**
+ * Read all three gyro axes in one register transaction without correction.
+ * Parameters x, y, z are non-null output pointers to signed 16-bit raw sensor
+ * counts for the respective sensor axes. There is no return value. This method
+ * does not change calibration, yaw, or integration timing; the underlying driver
+ * does not report I2C read success through this interface.
+ */
+void MPU6050_getdata::MPU6050_getRawRotation(int16_t *x, int16_t *y, int16_t *z)
+{
+  accelgyro.getRotation(x, y, z);
+}
+
+/**
+ * Read all three accelerometer axes in one register transaction.
+ * Parameters x, y, z are non-null output pointers to signed 16-bit raw sensor
+ * counts for the respective sensor axes, including gravity's contribution.
+ * There is no return value, unit conversion, or calibration. Existing gyro
+ * state is unchanged; this interface does not report underlying I2C read success.
+ */
+void MPU6050_getdata::MPU6050_getRawAcceleration(int16_t *x, int16_t *y, int16_t *z)
+{
+  accelgyro.getAcceleration(x, y, z);
+}
+
 bool MPU6050_getdata::MPU6050_calibration(void)
 {
   unsigned short times = 100; //Sampling times

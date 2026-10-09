@@ -15,6 +15,8 @@ public:
   bool MPU6050_dveInit(void);
   bool MPU6050_calibration(void);
   bool MPU6050_dveGetEulerAngles(float *Yaw);
+  void MPU6050_getRawRotation(int16_t *x, int16_t *y, int16_t *z);
+  void MPU6050_getRawAcceleration(int16_t *x, int16_t *y, int16_t *z);
 
 public:
   //int16_t ax, ay, az, gx, gy, gz;

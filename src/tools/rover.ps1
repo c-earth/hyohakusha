@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('Sensors','Record','Move','Stop','PanTest','FinePanTest')][string]$Action = 'Sensors',
+    [ValidateSet('Sensors','Record','Move','Stop','PanTest','FinePanTest','PanStep')][string]$Action = 'Sensors',
     [string]$Address = '192.168.4.1',
     [ValidateRange(1,3600)][int]$Seconds = 10,
     [ValidateRange(1,10)][int]$FramesPerSecond = 2,
@@ -7,7 +7,8 @@ param(
     [ValidateRange(1,100)][int]$Speed = 60,
     [ValidateRange(50,500)][int]$DurationMs = 200,
     [switch]$EnableMovement,
-    [ValidateRange(1,1000000)][int]$UltrasoundTimeoutUs = 30000
+    [ValidateRange(1,1000000)][int]$UltrasoundTimeoutUs = 30000,
+    [ValidateRange(-170,170)][int]$PanStepDegrees = 1
 )
 $ErrorActionPreference = 'Stop'
 function New-CaptureFolder {
@@ -71,7 +72,7 @@ try {
         throw "No response for $tag. Installed firmware may differ from the stock reference."
     }
     if ($Action -eq 'Sensors') {
-        foreach ($item in @(@('ultrasound_us',21,2),@('floor_left',22,0),@('floor_middle',22,1),@('floor_right',22,2))) {
+        foreach ($item in @(@('ultrasound_us',21,2),@('floor_left',22,0),@('floor_middle',22,1),@('floor_right',22,2),@('battery_v',24,0),@('gyro_raw_xyz',25,0),@('accel_raw_xyz',26,0))) {
             $tag = [string]$item[0]
             $command = @{N=$item[1];D1=$item[2];H=$tag}
             if ($item[1] -eq 21) { $command.T = $UltrasoundTimeoutUs }
@@ -104,6 +105,11 @@ try {
             Send-Rover '{"N":100}'
         }
         Write-Output "Pan test images saved to $folder. Acknowledgments are not angle measurements."
+    } elseif ($Action -eq 'PanStep') {
+        Send-Rover (@{N=27;D1=$PanStepDegrees;H='pan_step'} | ConvertTo-Json -Compress)
+        $ack = Read-Rover 'pan_step'
+        if ($ack -ne 'ok') { throw 'Unexpected pan increment acknowledgment.' }
+        Write-Output 'Pan increment acknowledged; physical angle is not measured.'
     } elseif ($Action -eq 'Stop') {
         Send-Rover '{"N":100}'
         Write-Output 'Standby command sent; physical stop has not been independently verified.'

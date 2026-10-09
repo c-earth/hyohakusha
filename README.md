@@ -95,9 +95,32 @@ to the measurement handler, leaving validation to the host, and reports raw puls
 for `D1=2`; zero means timeout. These source changes have not been built or uploaded,
 so the installed firmware still uses the earlier centimeter reply contract.
 Built-in obstacle-avoidance and following modes have been removed from the
-modified UNO source, including button, IR, and N101 selection paths. N101 now
-selects only line tracking (`D1=1`); `D1=2/3` leave the mode unchanged but retain
-the existing `{ok}` reply. The N21 status threshold retains its numeric value
+modified UNO source, including button, IR, and N101 selection paths. Line tracking
+and leave-ground detection have also been removed, including N101 and N23 handlers.
+N22 reads the selected floor sensor on request (`D1=0` left, `1` middle, `2` right)
+and replies with its raw ADC value, leaving the current mode unchanged. Floor readings
+are no longer cached or acquired each loop. Floor-triggered standby gyro calibration and heading
+reference resets are removed; startup gyro calibration and direction-change heading
+resets remain. These removals have not been built or uploaded.
+N24 reads battery voltage on request and returns `{H_value}` in volts with three
+fractional digits, leaving the current mode unchanged. It uses the existing
+`ADC × 0.0375 × 1.08` conversion, whose accuracy is unverified. The Sensors action
+includes this reading as `battery_v`; N24 is not yet built or uploaded.
+N25 reads all three gyro axes in one register transaction and returns
+`{H_x,y,z}` as signed raw counts in sensor X/Y/Z order. The Sensors action labels
+this `gyro_raw_xyz`. No offset subtraction, rate conversion, calibration, yaw
+integration, or mode change occurs. Sensor mounting axes and I2C read validity
+are not established by this reply. N25 is not yet built or uploaded.
+N26 reads all three accelerometer axes in one register transaction and returns
+`{H_x,y,z}` as signed raw counts in sensor X/Y/Z order, including gravity's
+contribution. The Sensors action labels this `accel_raw_xyz`. No conversion,
+calibration, or mode change occurs. Mounting axes and read validity are unverified;
+N26 is not yet built or uploaded.
+IR remote handling has been removed from the modified UNO source: no receiver
+initialization, polling, or remote command processing remains in the application.
+The bundled IRremote library files are retained. This removal has not been built
+or uploaded.
+The N21 status threshold retains its numeric value
 and now compares raw microseconds in the modified source.
 `Record` downloads JPEG frames. `Stop` sends the standby command.
 The camera reference source sends standby when a TCP control connection closes,
@@ -112,7 +135,19 @@ clear, flat floor:
 
 Directions are `Forward`, `Backward`, `Left`, and `Right`. This tool accepts
 PWM 1–100 and duration 50–500 ms. PWM is not measured velocity. The downloaded
-UNO source uses `N=2` for timed movement and `N=3` for untimed movement.
+UNO source retains `N=2` for timed movement. N1 direct motor control, N3 untimed
+movement, and N110 clear-to-programming commands and their dedicated handlers
+have been removed from the modified source; N100 stopping remains. These removals
+have not been built or uploaded.
+N4 independent PWM control and N102 rocker driving have also been removed,
+including their handlers, mode state, and loop calls. N2 remains the host driving
+command and N100 remains the stop command; N2 still bypasses expiry when `T=0`.
+N2 forward/backward output now uses the requested PWM directly on both channels;
+gyro correction and its 10–180 PWM clamp have been removed from driving. Host gyro
+reads remain available. This source change has not been built or uploaded.
+Host LED commands N7, N8, and N105 and their handlers/state have been removed from
+the modified UNO source. Automatic battery warnings and standby LED behavior remain.
+This removal has not been built or uploaded.
 Heartbeat disconnect timing has not been safety-tested on the installed camera
 firmware and does not replace the short movement duration.
 
@@ -125,6 +160,16 @@ the starting command angle:
 ```
 
 ## Calibration and capture data
+
+The modified UNO source adds N27 for pan-only incremental control:
+`{"N":27,"D1":1,"H":"pan"}` increases the last commanded pan angle by 1 degree;
+negative `D1` decreases it. The target is clamped to 10–170 degrees. Command state
+starts at the startup angle (90 degrees) and is updated by N5 pan commands.
+It is not position feedback. N27 waits 500 ms, detaches the servo, enters
+programming mode, and sends `{H_ok}` after driver execution. N106 and its legacy
+ten-degree-step handlers have been removed. N5 remains available.
+The host tool exposes `-Action PanStep -PanStepDegrees 1` (default step 1;
+host range -170 to 170). These changes have not been built or uploaded.
 
 Camera pan alignment is recorded in `rover/calibration/camera.json`. The user
 visually identified command 100 degrees as straight ahead; increasing command
