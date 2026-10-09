@@ -8,9 +8,9 @@ This is a runbook, not an already-authorized hardware session.
 
 ## After charging
 
-1. Confirm the installed firmware. The October 9 candidate is built but has
-   not been uploaded. If deploying it, scope upload/readback and stopped/bounded
-   protocol/stop verification first. Keep the saved October 8 build available.
+1. October 9 UNO build is installed with all 19,762 flash bytes read-back verified.
+   Scope initial stopped/bounded protocol and physical stop verification first.
+   Keep the saved October 8 build available.
 2. Establish Wi-Fi/Cam switch, close other controllers, then run one stopped
    battery/gyro/camera preflight. N1 must be valid and at least 7.0 V; bias and
    image-rest gates must pass. Fresh observations are required after charging.
@@ -78,10 +78,9 @@ offline regression coverage; its changed scheduling/recording needs live verific
 This test evaluates repeatability of the existing scene-dependent method;
 absolute heading, translation and stopping clearance remain separate milestones.
 
-Firmware source now has a compiled October 9 candidate; the rover still has the
-October 8 build. The candidate has not passed live protocol/stop checks. Record
-which build is installed. If deploying the candidate, complete separately scoped
-upload/readback and initial stopped/bounded protocol checks before this eight-turn
+The October 9 build is installed and flash-verified; it has not passed live
+protocol/stop checks. Record which build is installed. Complete separately scoped
+initial stopped/bounded protocol checks before this eight-turn
 experiment. Host fault handling accepts existing successful reply formats.
 
 ### Scope to authorize

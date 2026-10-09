@@ -3,6 +3,9 @@ Updated: October 9, 2026, America/New_York
 Workspace: D:\projects\hyohakusha
 
 RESUME
+- October 9 UNO build uploaded on COM3 after user changed Upload-Cam switch.
+  ATmega328P signature 1E 95 0F accepted; all 19,762 flash bytes read-back verified,
+  exit 0. Camera/EEPROM not written. Runtime protocol/physical checks outstanding.
 - Read AGENTS.md, this file and rover/calibration/next-test.md.
 - Host reorganization and offline readiness work are complete. Await the charged
   rover and a scoped live session. No connection/upload/movement in this work.
@@ -13,6 +16,16 @@ RESUME
   sequential movement/pan, IMU allowed during drive, HTTP camera observation-only.
 
 IMPLEMENTED HOST LAYOUT AND BEHAVIOR
+- Keyboard manual panel now has all-sensor F5 (including battery), snapshot F6,
+  incremental pan F8/F9, target pan F10 and asynchronous live JPEG preview.
+  Sensor/pan commands stop/disarm first, serialize through existing TCP and drain
+  one pending reply before driving can be re-enabled. Manual battery replies
+  invalid/below 7.0 V fault/disconnect; no continuous battery monitor.
+  Syntax and expanded offline SelfTest passed. No GUI or hardware execution;
+  next keyboard check is window layout and stopped sensors/camera/pan under a
+  separately authorized live scope. Snapshot/preview does not save data.
+  Separate battery button/F7 removed at user request; source inspection only
+  for that removal. Reopen the window to load the updated controls.
 - src/control: RoverConnection transport, protocol, MotionSampler, timed camera,
   PowerShell fault parser and keyboard controller. No agent policy/output paths.
 - src/agent/runtime: calibration/exploration policy, bias and experiment records.
@@ -40,8 +53,8 @@ IMPLEMENTED HOST LAYOUT AND BEHAVIOR
 AFTER CHARGING: NEXT BOUNDED SESSION
 - See next-test.md for commands, gates and exact proposed scope. First confirm
   installed firmware and camera view/pan; historical command state is not feedback.
-- Candidate upload/readback and initial protocol/stop checks require their live
-  scope before candidate experiments. It is compiled, NOT installed.
+- October 9 build upload/readback complete. Initial stopped/bounded protocol and
+  physical stop checks still require their live scope before experiments.
 - Proposed host session: stopped preflight, one forward pulse, disconnect/assess,
   then choose up to two more segments of at most three actions each. Maximum
   seven PWM60/T200 pulses, 1,400 ms total commanded time; no automatic retry.
@@ -53,10 +66,11 @@ AFTER CHARGING: NEXT BOUNDED SESSION
   useful; it is not a prerequisite for every local exploration segment.
 
 FIRMWARE CANDIDATE / BROADER REVIEW
-- Installed UNO: October 8 read-back verified build, 20,416 flash / 794 global RAM.
+- Saved prior UNO: October 8 read-back verified build, 20,416 flash / 794 global RAM.
 - Candidate: rover/firmware/build/uno-candidate-20261009/uno.ino.hex;
   SHA-256 ddd2e5d196ebfc4506a9d82084e79dff958ff7493919c547f30d1734f041524a.
-  Built with AVR core 1.8.8: 19,762 flash / 664 global RAM; NOT uploaded.
+  Built with AVR core 1.8.8: 19,762 flash / 664 global RAM; installed October 9,
+  all flash bytes read-back verified on COM3. Runtime behavior unverified.
 - Candidate isolates N4 tag/expiry; stops output before N100/errors; checks IMU
   identity/configuration/full reads with 10,000 us Wire timeout; removes unused
   startup bias. N5 replies after driver return. N5/N6/N7 during drive stop/reject.

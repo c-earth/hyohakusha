@@ -16,7 +16,7 @@ The current host passes 53 offline Python tests, PowerShell reply/launcher check
 and command import checks. The [charged-session plan](rover/calibration/next-test.md)
 starts with fresh stopped evidence and one short action, then interleaves
 calibration with bounded exploration in the prepared area. Hardware verification
-of the refactored host and compiled firmware candidate remains outstanding.
+of the refactored host and installed October 9 firmware remains outstanding.
 
 ## Hardware
 
@@ -39,11 +39,11 @@ Default address: 192.168.4.1; scripts accept an Address override.
 Endpoints: HTTP /status and /capture, MJPEG
 [stream](http://192.168.4.1:81/stream), TCP port 100. The downloaded camera source
 specifies Wi-Fi channel 9; its identity with installed firmware is unproven.
-The keyboard panel has no camera viewer.
+The keyboard panel embeds a JPEG snapshot/live preview using HTTP /capture.
 
 ## Command-line tools
 
-Current UNO numbering was built/uploaded October 8, 2026, with flash read-back
+Current UNO firmware was uploaded October 9, 2026, with flash read-back
 verification. Historical journal examples may use superseded IDs.
 
 | Command | Contract |
@@ -59,10 +59,10 @@ verification. Historical journal examples may use superseded IDs.
 | N100 | Stop/standby; acknowledgment does not prove physical rest. |
 
 Onboard autonomous modes, button/IR control and automatic battery monitoring
-were removed from the installed UNO application. It retains startup gyro
-calibration, servo positioning and LED initialization. Forward/backward use
-requested PWM without the previous gyro correction. The October 9 candidate
-removes the unused startup gyro-offset calculation; it has not been uploaded.
+were removed from the installed UNO application. It retains startup
+servo positioning and LED initialization. Forward/backward use
+requested PWM without the previous gyro correction. The installed October 9 build
+removes the unused startup gyro-offset calculation.
 
 The candidate reports faults as `{H_error_reason}` or `{error_reason}` without
 a tag. Reasons are `imu_not_ready`, `imu_read`, `drive_busy`, `drive_direction`,
@@ -111,6 +111,28 @@ Hold WASD/arrows; release to stop. Space/Escape, focus loss, closing, or multipl
 directions stop and disable driving. Default PWM60 (range 20-100); N4/T250 is
 renewed every 100 ms. No automatic obstacle avoidance. SelfTest is an offline
 execution option and requires task authorization.
+
+Buttons and shortcuts provide the manual observation/pan interfaces:
+
+| Control | Action |
+|---|---|
+| Check sensors / F5 | Battery, raw gyro/accelerometer XYZ, ultrasound echo us and left/middle/right floor ADC. |
+| Snapshot / F6 | Display a JPEG in the window; no file saved. |
+| Live JPEG preview checkbox | Repeated asynchronous /capture requests, with 500 ms between completed requests; actual frame rate depends on camera/network. |
+| Pan - / F8, Pan + / F9 | Signed command increment, step 1-20 degrees (default 1). Increasing commands pan left. |
+| Pan target / F10 | Absolute command target 10-170 degrees (default 100); no position feedback. |
+
+Sensor/pan requests send Stop and disable driving, use the same TCP owner, and
+allow one pending reply. Re-enable driving after completion. Space/Escape cancels
+queued requests and sends Stop; any already-sent request drains or times out.
+Faults, missing replies, or invalid/below-7.0 V battery replies disconnect with
+best-effort Stop. Battery checks are manual, not continuous battery monitoring.
+Readings and images show host times and may become stale; raw values do not
+establish sensor accuracy, clearance or physical rest. Ultrasound zero is unknown.
+Camera uses HTTP only and can operate while TCP is disconnected. Preview errors
+disable live refresh and mark the displayed image as potentially stale.
+The additions passed offline syntax and keyboard/queue SelfTest checks; window
+layout, camera refresh and live sensor/pan operation remain unverified on hardware.
 
 Observed individual trials support timed expiry, early N100 and stopping after
 TCP close/heartbeat timeout. Physical stop distance, abrupt Wi-Fi-loss behavior
@@ -192,14 +214,16 @@ roadmap work; their absence is explicit in handoff.
 
 ## Firmware and backups
 
-October 8 UNO upload/read-back verified 20,416 application flash bytes.
+October 9 UNO upload/read-back on COM3 verified 19,762 application flash bytes
+with accepted ATmega328P signature 1E 95 0F. Runtime behavior remains unverified.
+The saved October 8 build contains 20,416 application flash bytes.
 Its saved build/uno/flash.hex and eeprom.hex are retained; EEPROM output contains
-no EEPROM data. The October 9 candidate is compiled separately and NOT uploaded:
+no EEPROM data. The October 9 build is compiled separately and now installed:
 
 | UNO build | Flash / 32,256 bytes | Global RAM / 2,048 bytes |
 |---|---:|---:|
-| Installed October 8 | 20,416 | 794 |
-| Candidate October 9 | 19,762 | 664 |
+| Saved October 8 | 20,416 | 794 |
+| Installed October 9 | 19,762 | 664 |
 
 Candidate: `rover/firmware/build/uno-candidate-20261009/uno.ino.hex`.
 It isolates N4's completion tag and timer, services expiry around serial/sensor
@@ -212,7 +236,7 @@ Offline checks passed: UNO build, ten production-timer compile-time assertions,
 41 Python tests, twelve PowerShell reply checks, keyboard SelfTest and parsing of
 four changed PowerShell sources. Hardware I2C fault injection, UART ordering and
 physical stopping have not been exercised on this candidate. Build/check details
-are in journal and candidate verification.json. Upload and live checks remain
+are in journal and candidate verification.json. Upload passed; live checks remain
 separate work.
 
 Original UNO backups contain full 32 KB flash and 1 KB EEPROM readbacks; fuse

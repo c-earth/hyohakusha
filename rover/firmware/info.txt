@@ -1,7 +1,9 @@
 1 degree camera pan control
 
-UNO installed: October 8 build, 20,416 bytes flash / 794 bytes global RAM.
-UNO source: October 9 candidate, compiled offline; NOT uploaded.
+UNO installed: October 9 build, 19,762 bytes flash / 664 bytes global RAM.
+UNO upload: COM3, ATmega328P signature 1E 95 0F; all 19,762 flash bytes read-back verified, exit 0.
+UNO runtime sensor/protocol/physical stop verification remains outstanding.
+Saved prior build: October 8, 20,416 bytes flash / 794 bytes global RAM.
 Candidate: build/uno-candidate-20261009/uno.ino.hex (19,762 bytes flash / 664 bytes global RAM).
 Candidate checks/identity: build/uno-candidate-20261009/verification.json; see journal.md for limitations.
 Legacy capability review: legacy-review.txt covers UNO application/drivers/libraries and ESP32 bridge/camera/UI.

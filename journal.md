@@ -2014,3 +2014,67 @@ WHERE TO FIND DETAIL
 - Rules permit selected command prefixes but do not authorize tasks. Current
   session rule loading remains unverified. Existing git.rules stays local.
 ```
+
+# October 9, 2026: keyboard sensor, camera and pan panel
+
+User authorized keyboard-controller updates for manual sensors, battery, camera
+and pan, and separately authorized offline SelfTest/syntax execution. Calibration,
+exploration launchers and recording were excluded by the user's clarification.
+No rover connection, GUI launch, firmware change or installation performed.
+
+Updated src/control/keyboard-rover.ps1: F5 reads N1/N2/N3/N7 D1=2 T30000 and
+N8 D1=0/1/2 sequentially; F7 reads N1 alone. Sensor/pan requests stop/disarm
+and share existing TCP, with unique tags, one pending reply and 2.5 s timeout.
+Space/Escape cancels queued work, retaining pending reply drainage. Battery
+invalid/nonfinite/below 7.0 V and firmware faults disconnect with best-effort Stop.
+Battery is checked on demand. F8/F9 send signed N6 step (1-20 degrees); F10
+sends N5 target (10-170 degrees). Acknowledgments are not position feedback.
+
+F6 displays /capture JPEG, and the live checkbox repeats asynchronous HTTP-only
+requests 500 ms after each completion. One request, 3 s timeout and 4 MiB response
+limit; old bitmaps and decode streams are disposed. Errors stop live refresh and
+label the last frame potentially stale. Images are displayed only, not saved.
+Shortcut repeat suppression avoids repeated pan from one held function key.
+Conflicting drive directions now disable driving as documented.
+
+Checks actually run: pwsh -NoProfile -File ./src/control/keyboard-rover.ps1
+-SelfTest passed direction/conflicting/released keys, request ordering,
+pending-reply drainage and unique-tag checks. PowerShell Parser.ParseFile passed.
+Source inspection matched command units and pan limits to existing tool/firmware.
+These checks do not verify UI layout, HTTP image rendering or physical operation.
+README and handoff updated with current usage and limits. Next check requires
+separate GUI/live authorization; no calibration milestone changed.
+
+# October 9, 2026: UNO upload attempt awaiting switch confirmation
+
+User requested firmware upload and confirmed USB connection after UNO candidate
+was identified. Detected COM3 with Arduino CLI. Candidate SHA-256 matched
+ddd2e5d196ebfc4506a9d82084e79dff958ff7493919c547f30d1734f041524a.
+Upload targeted arduino:avr:uno, saved uno-candidate-20261009/uno.ino.hex,
+--verify --verbose. Sandbox attempt could not open COM3 (access denied).
+Escalated attempt opened COM3 but failed bootloader synchronization after ten
+resp=0x00 attempts, exit 1. No signature acceptance, flash write or verification
+occurred. Asked user to set Upload-Cam switch to Upload before retrying.
+No TCP, sensors, pan or wheel commands sent. Candidate remains undeployed.
+
+# October 9, 2026: UNO upload completed
+
+User confirmed Upload-Cam switch changed. Retried the same saved October 9 HEX
+on COM3, arduino:avr:uno, --verify --verbose, outside sandbox with approval.
+Avrdude accepted ATmega328P signature 1E 95 0F, wrote 19,762 flash bytes and
+read-back verified all 19,762 bytes; exit 0. This supersedes undeployed status.
+Candidate hash was verified against the manifest before the initial attempt:
+ddd2e5d196ebfc4506a9d82084e79dff958ff7493919c547f30d1734f041524a.
+EEPROM/camera were not written; retained the saved October 8 build and backups.
+Updated README, firmware info/verification, handoff and next-test deployment facts.
+No TCP sensor, pan, wheel, physical stop or fault-injection checks performed.
+Next stage is separately scoped initial stopped/bounded protocol/stop validation.
+
+# October 9, 2026: remove redundant keyboard battery control
+
+User explicitly confirmed removal of both the Battery button and F7 shortcut.
+Verified both existed before editing. Removed button construction/registration,
+click handler, F7 dispatch/help and the battery-only request branch. Preserved
+N1 battery reading/validation within Check sensors/F5. Updated README and handoff.
+Verification: focused source read-back/reference search and whitespace inspection.
+No tests, GUI restart or hardware commands performed for this removal.
