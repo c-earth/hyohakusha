@@ -17,7 +17,7 @@ class BoundedExplorationSession(CalibrationSession):
     """Reuse calibration checks for at most three predetermined short actions.
 
 Constructor input: argparse namespace with session metadata/safe-area flag.
-No claimed metric pose/clearance. Reject >20% shortening of raw echo while
+No claimed metric pose/clearance. Reject >90% shortening of raw echo while
 heading is unchanged. Turn observations start a new echo reference, since
 different pointing directions do not measure approach to the same obstacle.
 Fresh bias/camera/IMU and N1<7 V cutoff are retained before/after each short pulse.
@@ -65,16 +65,16 @@ Fresh bias/camera/IMU and N1<7 V cutoff are retained before/after each short pul
         return (False,)
 
     def sensors(self):
-        """Return parent sensor batch or stop on >20% shortening of prior echo.
+        """Return parent sensor batch or stop on >90% shortening of prior echo.
 
-        No inputs. Echo is raw us; the ratio is a conservative observed-change
+        No inputs. Echo is raw us; the ratio is a user-selected observed-change
         trigger, not calibrated obstacle distance or swept-body clearance.
         """
         values = super().sensors()
-        if self.compare_echo and self.previous_echo is not None and values['echo_us'] < 0.8*self.previous_echo:
+        if self.compare_echo and self.previous_echo is not None and values['echo_us'] < 0.1*self.previous_echo:
             self.send(dict(N=100))
             self.event('echo_change_stop', previous_us=self.previous_echo, current_us=values['echo_us'])
-            raise RuntimeError('Raw echo shortened >20%: stop and reassess')
+            raise RuntimeError('Raw echo shortened >90%: stop and reassess')
         self.previous_echo = values['echo_us']
         return values
 

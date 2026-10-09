@@ -1,130 +1,102 @@
-ELEGOO rover project handoff
-Updated: October 9, 2026, America/New_York
-Workspace: D:\projects\hyohakusha
+ELEGOO rover — handoff for the next agent
+Updated: October 9, 2026 (America/New_York)
+Workspace: D:\projects\hyohakusha | Verified branch: codex/exploration
 
-RESUME
-- User reports agenda item 1 complete: updated keyboard window, latest sensor
-  fields, response log, camera preview and servo command tracking checked.
-  User-reported verification; no new agent-observed telemetry or test evidence.
-  Battery-runtime measurement removed from agenda at user's request.
-  Remaining: installed-firmware protocol/drive-stop checks, bounded exploration
-  with calibration, then reconstruction. Launcher/status edits uncommitted.
-- October 9 UNO build uploaded on COM3 after user changed Upload-Cam switch.
-  ATmega328P signature 1E 95 0F accepted; all 19,762 flash bytes read-back verified,
-  exit 0. Camera/EEPROM not written. Runtime protocol/physical checks outstanding.
-- Read AGENTS.md, this file and rover/calibration/next-test.md.
-- Host reorganization and offline readiness work are complete. Await the charged
-  rover and a scoped live session. No connection/upload/movement in this work.
-- User permits calibration WHILE exploring the prepared relatively safe area.
-  Initial image assessment is done; calibration is partial. Do not require full
-  metric calibration before every short native-unit move in that area.
-- One main agent; no subagents unless explicitly requested. One TCP controller;
-  sequential movement/pan, IMU allowed during drive, HTTP camera observation-only.
+1. CURRENT POSITION
+Offline workflow preparation is complete; the next live round has not started.
+rover/state/task-state.json is revision1, not_started, live_authorized=false,
+with zero pulse/segment caps and empty runs/reservations/backlog/workers.
+Do not mistake the historical replay state for a selected live mission.
+The user authorized committing and pushing the accumulated exploration/workflow work.
+Use git status/log to verify publication; preserve unrelated changes and raw evidence.
+No hardware operation occurred during workflow preparation or this handoff rewrite.
+Current rover power, connection, battery, pose, clearance and availability are unknown.
 
-IMPLEMENTED HOST LAYOUT AND BEHAVIOR
-- Keyboard window now has fixed latest sensor readouts with receipt times and
-  separate scrolling response history. Servo tracks acknowledged command degrees
-  only after an absolute target reply; increments clamp 10-170. Disconnect resets
-  fields/servo to unknown. Source/whitespace checks by agent; user now reports
-  keyboard-window verification complete. Camera preview resized to fit status.
-- Double-click src/keyboard-rover.cmd to launch the keyboard window with pwsh
-  -NoProfile -STA. Uses verified Codex-bundled pwsh path under USERPROFILE,
-  avoiding File Explorer PATH lookup; script resolved via launcher's directory.
-  Launcher source inspected; double-click execution has not been tested.
-- Keyboard manual panel now has all-sensor F5 (including battery), snapshot F6,
-  incremental pan F8/F9, target pan F10 and asynchronous live JPEG preview.
-  Sensor/pan commands stop/disarm first, serialize through existing TCP and drain
-  one pending reply before driving can be re-enabled. Manual battery replies
-  invalid/below 7.0 V fault/disconnect; no continuous battery monitor.
-  Syntax and expanded offline SelfTest passed. User reports keyboard-window
-  check complete; no new agent hardware execution. Snapshot/preview saves no data.
-  Separate battery button/F7 removed at user request; source inspection only
-  for that removal. Reopen the window to load the updated controls.
-- src/control: RoverConnection transport, protocol, MotionSampler, timed camera,
-  PowerShell fault parser and keyboard controller. No agent policy/output paths.
-- src/agent/runtime: calibration/exploration policy, bias and experiment records.
-  src/agent/analysis: saved-data assessment; src/agent/tests: offline regressions.
-- src/tools: manual rover and four calibration/exploration/baseline/survey entries.
-  Old src/agent/*.ps1 paths are forwarding shims; Python module entries unchanged.
-- RoverConnection is CalibrationSession's transport base, owning one socket.
-  Refuses overlapping movement/pan, second pending sensor and non-owner-thread
-  access. N100 has priority. MotionSampler drains the last IMU reply before
-  stopped sensing resumes. Close other controller processes separately.
-- Exploration accepts 1-3 frozen forward/left/right actions at PWM60/T200;
-  default three forward. Order/count enforced; no reverse or power escalation.
-  Each pulse records fresh stopped bias, battery/floor/echo, timed camera/IMU
-  and settling evidence. Echo comparison resets after turns. No route planner.
-- Existing timing gates remain: >50 ms late start, >500 ms old camera evidence,
-  pending IMU >0.75 s and bias >10 s refuse/fault. One pending sensor request.
-- Faults preserve partial trials; stop/close cleanup is attempted independently
-  of event logging. Validation excludes incomplete/rest-rejected trials and
-  requires positive cleanup records. Missing support is unknown.
-- Optional camera_timestamp preserves X-Timestamp headers; clock/exposure meaning
-  is unverified. Analysis still uses host brackets and full-gyro sensor-Z integral.
-- Source hashes include control, runtime, analysis and tools. No new dependency.
-  Skill and command rules updated. Rule loading in this chat remains unverified.
+2. READ BEFORE CONTINUING
+AGENTS.md → README.md (hardware/setup/commands) → WORKFLOW.md → coordinator skill
+(.agents/skills/rover-coordinator/SKILL.md) → selected state.
+Before an experiment also read rover-experiment skill, calibration/procedure.md,
+results.md and next-test.md. Journal.md holds detailed history and superseded handoffs.
+Known documentation conflict: next-test.md's OPTIONAL turn-comparison section says
+October9 firmware has not passed live protocol/stop checks; its opening section and
+recorded October9 exploration support bounded response/early-N100 later rest.
+Resolve that stale statement against the relevant build/run evidence before relying
+on the optional test; independent firmware expiry remains unverified.
 
-AFTER CHARGING: NEXT BOUNDED SESSION
-- See next-test.md for commands, gates and exact proposed scope. First confirm
-  installed firmware and camera view/pan; historical command state is not feedback.
-- October 9 build upload/readback complete. Initial stopped/bounded protocol and
-  physical stop checks still require their live scope before experiments.
-- Proposed host session: stopped preflight, one forward pulse, disconnect/assess,
-  then choose up to two more segments of at most three actions each. Maximum
-  seven PWM60/T200 pulses, 1,400 ms total commanded time; no automatic retry.
-  Main agent tracks total cap; runner enforces each frozen segment.
-- Assess fresh images, pre/post rest, gyro gaps, battery, stop timing and cleanup
-  between segments. Retain translated views and calibration data together.
-  A fault/refusal ends the session. Do not relax gates or increase power.
-- The separate eight-turn comparison remains available when its question is
-  useful; it is not a prerequisite for every local exploration segment.
+3. ACCEPTED OPERATING APPROACH
+Exploration/data collection is primary. Heavy image/reconstruction/map work uses
+completed evidence offline when delegation is authorized. Reuse workers; their
+requested views become opportunistic backlog. Significant supported findings can
+change the next decision; pending background work alone should not stall collection.
+One main TCP owner; serialize motion/pan; N100 takes priority. Workers never control
+hardware. Rover stops between pulses; select the next segment after disconnect/review.
+Use short native-unit collection while calibration continues in the prepared area.
+Do not require completed metric reconstruction/calibration for every supported pulse.
+Within a defined authorized round, continue without repeated permission requests.
+Echo-only recovery may include up to3 retries when scoped, after fresh stopped
+checks, positive cleanup and a specific recovery reason. Inspect attempted sends;
+never replay a partially moved segment. Other faults/unsupported clearance stop work.
 
-FIRMWARE CANDIDATE / BROADER REVIEW
-- Saved prior UNO: October 8 read-back verified build, 20,416 flash / 794 global RAM.
-- Candidate: rover/firmware/build/uno-candidate-20261009/uno.ino.hex;
-  SHA-256 ddd2e5d196ebfc4506a9d82084e79dff958ff7493919c547f30d1734f041524a.
-  Built with AVR core 1.8.8: 19,762 flash / 664 global RAM; installed October 9,
-  all flash bytes read-back verified on COM3. Runtime behavior unverified.
-- Candidate isolates N4 tag/expiry; stops output before N100/errors; checks IMU
-  identity/configuration/full reads with 10,000 us Wire timeout; removes unused
-  startup bias. N5 replies after driver return. N5/N6/N7 during drive stop/reject.
-  IMU read failure latches unready until successful init at restart.
-- Raw units, direct PWM, command IDs, servo bounds, UART9600 and T=0 retained.
-  Host permits bounded positive pulses. Explicit error_* frames abort acquisition.
-- Complete capability review and coverage limits: rover/firmware/legacy-review.txt.
-  Leads include checked combined IMU/device timing, camera's 150 ms capture wait,
-  image settings/timestamps, separate wheel response, floor/echo calibration,
-  stop semantics, local stop input and bridge framing. These remain proposals
-  except host timestamp preservation and sequential acquisition improvements.
-- Remaining source defects relevant to future work: direction_void=3 passed as
-  bool does not select STBY-low stop; N7 D1=1 compares microseconds with 20.
-  Host uses D1=2 raw echo only. No legacy autonomous modes were restored.
-- Camera readback preserved; downloaded ESP32 source identity remains unproven.
-  Candidate/installed HEX and all 15 manifest source hashes matched after moves.
+4. IMPLEMENTED RESOURCES AND THEIR LIMITS
+- .codex/agents/{rover_map,rover_images,rover_evidence}.toml: native definitions,
+  required fields parsed; parent settings inherited. Actual client discovery/loading
+  UNVERIFIED. Current collaboration surface has no native-profile selector. Offline
+  restrictions are instructions, not separate enforced tool/network permissions.
+- Coordinator skill is discovered in this chat's skills catalog. Duplicate role
+  Markdown files/portable skill wrapper removed. User explicitly removed the hook:
+  no lifecycle hook is installed. Codex memory settings/store unchanged; generated
+  memory is supplemental, not current mission/sensor/authorization evidence.
+- src/tools/workflow_state.ps1: offline locked/atomic mission ledger with history,
+  reservations, linked imports, worker assignments and requested-view backlog.
+  Reserve full1-3-action plans before separate dispatch. Import resulting run with
+  ReservationId. Full reservations plus unlinked attempts/linked excess consume
+  budget; unknown accounting blocks further reservations. Send logs are lower bounds.
+  IMPORTANT: the live launcher does not enforce the ledger; main must match scope.
+- src/tools/review_segment.ps1: offline motion validation + strict evidence card.
+  src/tools/session_brief.ps1: offline JSON/Markdown/HTML inventory. Preserve failed
+  trials; use new derived output directories. Saved support is not physical clearance.
+- output/pdf/rover-exploration-workflow.pdf: visually inspected A3 vector figure;
+  source src/tools/draw_workflow_pdf.py. Full architecture/commands in WORKFLOW.md.
 
-VERIFICATION / PRESERVATION
-- Passed: 53 Python tests; 12 PowerShell reply checks; four forwarding-entry and
-  two launcher-form checks; keyboard SelfTest; six Python module --help checks;
-  27 Python and 13 PowerShell source parses; local rule syntax/basic skill links.
-- Prior firmware build and ten timer compile-time assertions remain applicable;
-  no firmware changes/rebuild this continuation. No physical fault injection.
-- All 2,009 protected file paths/sizes/mtime matched before/after under data,
-  backups, vendor and firmware source/build/tests (not a complete byte audit).
-- Existing venv base-path warning appears on some successful checks. No environment
-  changes. Skill available here; full validator still lacks PyYAML, not installed.
+5. LAST LIVE EVIDENCE — HISTORICAL ONLY
+Session data/20261009085621235:43 completed PWM60/T200 trials (27 forward expiry
+schedule,1 forward early-N100,9 left,6 right), with saved rest/cleanup support.
+Last run20261009094727199: latest/minimum battery7.574/7.533 V; echo3518 us,
+approximately0.603 m reflecting-target range assuming343 m/s round-trip sound.
+User-selected HOST echo gate: >90% shortening at unchanged heading; exactly90%
+allowed; turn resets reference; invalid/zero echo faults. Stationary9.1/13.4 ms
+clusters caused earlier refusals; physical cause unknown. Echo is not body clearance.
+Prepared flat/no-drop/path clearance was a user assumption. Camera points slightly
+upward with little floor; some earlier door motion. Refresh assumptions after changes.
+Independent expiry, stopping distance, absolute heading, metric translation/intrinsics,
+cliff avoidance and autonomous coverage remain unverified. Geometry is experimental
+projective diagnostics, not a validated Euclidean room reconstruction.
 
-EVIDENCE AND LIMITS TO CARRY FORWARD
-- N1 <7.0 V or invalid/missing battery ends acquisition; voltage scale unverified.
-- Last recorded battery 7.655 V, run 20261009012243615. Current charge/link unknown.
-  Last live controller sent N100 and disconnected; no newer physical observations.
-- Turn run 20261009011850801: eight PWM60/T200 trials, rest supported 8/8,
-  active gyro gaps ~50-59 ms; four held-out disagreements median 0.588 nominal
-  degrees under the historical method. New full-gyro method is not directly
-  comparable. Pilot 20261009011637215: three forward pulses, rest supported 3/3.
-- No validated cliff detector, continuous obstacle avoidance, metric pose,
-  absolute heading, stopping distance or camera intrinsics. Safe-area/no-drop
-  statements are user assumptions. Unknown required clearance stops expansion.
-- Readiness means software and runbook prepared for bounded local work, not
-  autonomous room coverage. General search/reconstruction remain incomplete.
-- Data lives under existing data sessions; do not rename captures. Prior details,
-  authorizations and superseded handoffs are preserved in journal.md.
+6. VERIFICATION AND EVIDENCE LOCATIONS
+Previous implementation checks:77 Python tests and inert PowerShell launcher checks
+passed. Native TOML parsed. Skill discovery verified; official skill validator could
+not run without absent PyYAML. No dependency installed to address that limitation.
+Actual offline outputs under data/20261009085621235/analysis/:
+- codex-native-session-brief/report.html and summary.json:43 completed trials.
+- codex-native-segment-review/decision.json: saved_evidence_supported=true,
+  clearance_verified=false, movement_authorized=false.
+- codex-native-state-demo/state.json: HISTORICAL replay; linked three-left reservation
+  consumed3 pulses/1 segment rather than6; live_authorized=false. Not a live-round state.
+This handoff rewrite used read-only source/state/report inspection and git diff --check;
+no Python, test, simulation or hardware execution was repeated.
+
+7. ONE NEXT EXPERIMENT — PROPOSED, NOT AUTHORIZED BY THIS FILE
+A fresh bounded local-view exploration round: collect useful new views while observing
+native response/rest and sensor trends. Establish explicit live scope, prepared-area
+assumptions, total attempted-pulse/segment caps, deadline and retry allowance first.
+Read setup facts (default192.168.4.1, camera81, TCP100); confirm CAM/one controller and
+fresh stopped camera/battery/rest/required clearance. Freeze a single first action
+from current evidence at PWM60/T200; reserve it in a NEW round state. Acquire through
+src/tools/run_exploration.ps1; stop/disconnect, review and import linked evidence.
+Then choose supported1-3-action segments within remaining bounds, with opportunistic
+worker capture requests. Finish on objective/caps/deadline or unresolved fault.
+No fixed first direction is selected because current view/clearance are unknown.
+
+Use .venv\Scripts\python.exe for separately authorized Python work. Preserve raw data,
+backups/vendor/firmware. Existing UNO readback evidence is historical; firmware edit,
+build and upload are separate scopes. Do not revive onboard autonomous modes.

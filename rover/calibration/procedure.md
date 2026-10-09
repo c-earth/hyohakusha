@@ -53,6 +53,10 @@ Default `-ImuPlan adaptive` prioritizes gyro through a turn and 300 ms after hos
 stop, alternating gyro/accel during rest. Forward/backward retain alternating
 reads. Explicit `alternate`/`gyro-focus` remain available for comparison.
 `-TurnOnly -Repeats 2` limits a focused comparison to eight turn trials.
+`-DriveOnly -ForwardOnly -TimedCamera -Repeats 1 -Speed 60 -DurationMs 200`
+restricts the comparison to two forward trials, expiry schedule and early N100.
+ForwardOnly and TurnOnly cannot be combined. Host N100 timing does not prove
+firmware expiry or physical stopping distance.
 `src.agent.analysis.validate_motion` compares first-repeat fits against later turns and
 checks pre/post rest evidence. Conditional zero-velocity endpoint corrections
 are diagnostics and are never used as validated distance or control odometry.
@@ -61,7 +65,7 @@ The local exploration entry `src/tools/run_exploration.ps1` defaults to three
 PWM60/T200 forward pulses. `-Actions 'forward,left,forward'` selects a frozen
 1-3-action segment with the same bounds and calibration evidence. Reverse,
 unplanned/fourth actions and duration/power changes are refused. Gyro sampling
-is adaptive (gyro-focused for turns, alternating for forward). The >20% echo
+is adaptive (gyro-focused for turns, alternating for forward). The >90% echo
 shortening gate applies at unchanged heading; turn observations establish a
 new reference. Zero/invalid echoes still fault in all directions. This is
 supporting evidence, not calibrated collision avoidance. Battery/bias/camera
@@ -114,8 +118,8 @@ JPEGs and trial metadata are saved. Sensor request/reply time brackets are not
 acquisition timestamps. Adaptive sampling favors gyro during turns and alternates
 gyro/accel otherwise, with one pending request and independent host stop deadline.
 The installed October 8 build lets N2/N3 change the N4 completion tag, so its
-expiry acknowledgments are not independently correlated. The compiled October 9
-candidate isolates the tag but has not been uploaded or live-verified.
+expiry acknowledgments are not independently correlated. The installed October 9
+build isolates the tag; upload/readback was verified and live native response observed. Independent expiry remains unverified.
 Serial/network latency and sampling effects remain part of these trial conditions.
 
 ## Command coverage

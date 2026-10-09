@@ -3,7 +3,8 @@
 AI-assisted control of an ELEGOO Smart Robot Car V4.0, with a longer-term goal
 of bounded exploration and reconstruction of the interior visible to its camera.
 Manual tools, bounded calibration and 1-3-action exploration segments with
-calibration evidence are implemented. General autonomous room search, metric pose and 3D reconstruction
+calibration evidence and experimental projective diagnostics are implemented.
+General autonomous room search, metric pose and validated 3D reconstruction
 are not implemented.
 
 Start with [handoff](handoff.txt) for current state and
@@ -12,11 +13,13 @@ Operating gates are in [calibration procedure](rover/calibration/procedure.md);
 historical evidence is in [results](rover/calibration/results.md) and [journal](journal.md).
 Examples below are usage references, not authorization to operate.
 
-The current host passes 53 offline Python tests, PowerShell reply/launcher checks
-and command import checks. The [charged-session plan](rover/calibration/next-test.md)
+The current host passes 77 offline Python tests and PowerShell launcher checks.
+PowerShell reply and command import checks passed previously. The
+[next-round plan](rover/calibration/next-test.md)
 starts with fresh stopped evidence and one short action, then interleaves
-calibration with bounded exploration in the prepared area. Hardware verification
-of the refactored host and installed October 9 firmware remains outstanding.
+calibration with bounded exploration in the prepared area. October 9 live checks
+support stopped sensing, bounded forward/turn response and early-N100 settling.
+Independent expiry, physical stop distance and injected-fault checks remain open.
 
 ## Hardware
 
@@ -158,11 +161,14 @@ and reliability across conditions remain unverified.
 [Next test](rover/calibration/next-test.md) provides the proposed focused recipe.
 run_calibration.ps1 delegates one Python TCP owner. Bounds are PWM60/80 and
 T100/200; stationary-only, turn-only, timed-camera and repeat options are exposed.
+`-DriveOnly -ForwardOnly -TimedCamera -Repeats 1 -Speed 60 -DurationMs 200`
+collects exactly two forward trials: expiry schedule and half-duration N100.
+ForwardOnly and TurnOnly are mutually exclusive; neither validates stop distance.
 src/tools/run_exploration.ps1 defaults to three PWM60/T200 forward pulses.
 `-Actions 'forward,left,forward'` freezes a segment of up to three forward/left/right
 actions under the same limits. Bias/rest checks and camera/IMU evidence accompany
 every action, so calibration can continue while exploring the prepared area.
-Its >20% echo-shortening trigger applies while heading is unchanged; a turn
+Its >90% echo-shortening trigger applies while heading is unchanged; a turn
 starts a new echo reference. It is not verified collision avoidance.
 
 Python modules run from the project root with `-m`; canonical PowerShell launchers
@@ -173,6 +179,14 @@ launcher paths forward their parameters and remain usable:
 .venv\Scripts\python.exe -m src.agent.analysis.validate_motion data/<session>/logs/<run> --output data/<session>/analysis/<new-output>
 .venv\Scripts\python.exe -m src.agent.analysis.integrate_imu data/<session>/logs/<run> --output data/<session>/analysis/<new-output>
 ```
+
+Offline reconstruction diagnostics are under `src/agent/analysis`:
+`capture_readiness.py` inventories completed stopped views and correspondence
+support; `target_baseline.py` measures target/background image differences using
+endpoint masks; `projective_reconstruction.py` attempts arbitrary-gauge two-view
+points; `projective_third_view.py` checks held-out projection into another view.
+These retain hashes, coordinates and failed/unsupported results. They do not
+establish Euclidean shape, metric distance, calibrated intrinsics or room coverage.
 
 The runtime refuses starts more than 50 ms late and pre-motion camera evidence
 older than 500 ms, and rechecks the 10 s bias limit at dispatch. These provisional
@@ -224,13 +238,13 @@ captures/logs in the same session.
 | rover/vendor/ | Retained vendor manuals, examples, libraries and models. |
 | tools/arduino, tools/esptool | Separate firmware tool installations. |
 
-Unused empty source reservations were removed. Mapping/reconstruction remain
+Unused empty source reservations were removed. Metric mapping/validated reconstruction remain
 roadmap work; their absence is explicit in handoff.
 
 ## Firmware and backups
 
 October 9 UNO upload/read-back on COM3 verified 19,762 application flash bytes
-with accepted ATmega328P signature 1E 95 0F. Runtime behavior remains unverified.
+with accepted ATmega328P signature 1E 95 0F. Live native response and later rest were observed; independent expiry and fault-injection behavior remain unverified.
 The saved October 8 build contains 20,416 application flash bytes.
 Its saved build/uno/flash.hex and eeprom.hex are retained; EEPROM output contains
 no EEPROM data. The October 9 build is compiled separately and now installed:
@@ -294,7 +308,105 @@ pwsh -NoProfile -File ./src/agent/tests/test_launchers.ps1
 
 The repository skill uses the documented
 [local skill layout](https://learn.chatgpt.com/docs/build-skills#where-codex-loads-local-skills).
-The repository skill is available in this chat. Its bundled validator was not
+Both repository skills are available in this chat. The bundled validator was not
 run successfully during creation because PyYAML was absent.
 
 [Official ELEGOO reference](https://github.com/elegooofficial/ELEGOO-Smart-Robot-Car-Kit-V4.0).
+
+## Codex-native coordination and classroom demonstration
+
+[WORKFLOW.md](WORKFLOW.md) is the maintained decision process and architecture guide.
+The main coordinator prioritizes exploration/data collection. Offline specialists
+process completed evidence concurrently; capture requests enter an opportunistic
+backlog. A saved report or state proposal never grants hardware authorization.
+
+| Resource | Purpose / current status |
+|---|---|
+| [Coordinator skill](.agents/skills/rover-coordinator/SKILL.md) | Main-agent coordination; discovered in this chat |
+| [Experiment skill](.agents/skills/rover-experiment/SKILL.md) | Existing experiment preparation/assessment routing |
+| [rover_map](.codex/agents/rover_map.toml) | Native observed-view/landmark specialist |
+| [rover_images](.codex/agents/rover_images.toml) | Native image/reconstruction specialist |
+| [rover_evidence](.codex/agents/rover_evidence.toml) | Native saved-evidence reviewer |
+| [Task checkpoint](rover/state/task-state.json) | Explicit current proposal: not_started, zero live-round caps |
+| .codex/rules/*.rules | Existing command approval rules; task authorization remains separate |
+
+The custom agent TOML files use the required name, description and developer_instructions
+fields and inherit model/settings from their parent. They have been parsed offline;
+actual discovery/selection by the running client is not yet verified. Offline boundaries
+are instructions, not a separately enforced tool ACL. The current collaboration tool
+surface has no native-profile selector, so generic implementation workers used in this
+chat are not claimed as profile-backed agents. [Official native-agent format](https://learn.chatgpt.com/docs/agent-configuration/subagents).
+
+Skills use the repository .agents/skills layout, not .codex/agents. Duplicate role
+Markdown documents and the earlier portable skill wrapper were removed. The hook
+handler/test were removed at the user's request; no lifecycle hook is installed.
+
+### State, memory and the immediate decision path
+
+Codex-generated local memories are supplemental, asynchronous context managed through
+product controls. Host memory settings were not inspected or changed. Do not treat
+memory as fresh pose, battery, clearance, cleanup or live authorization. The project
+ledger records mission-specific fields; it does not modify Codex's internal chat/task
+state. Read current instructions, handoff and selected ledger after resume/compaction.
+[Official memory controls](https://learn.chatgpt.com/docs/customization/memories).
+
+```powershell
+pwsh -NoProfile -File ./src/tools/workflow_state.ps1 -State rover/state/task-state.json -Action status
+```
+
+For a newly scoped round, create a NEW proposal state and record its selected caps/
+deadline. The zero-cap checkpoint intentionally permits no reservation:
+
+```powershell
+pwsh -NoProfile -File ./src/tools/workflow_state.ps1 -State data/<session>/analysis/<new-round>/state.json -Action create -Session data/<session> -Objective '<objective>' -MaxPulses <cap> -MaxSegments <cap> -Deadline '<ISO time with offset>' -MaxEchoRetries <0-3>
+pwsh -NoProfile -File ./src/tools/workflow_state.ps1 -State <state> -Action reserve -Id segment-01 -Actions '<frozen-actions>'
+```
+
+Reservations consume the full frozen 1-3-action bookkeeping plan before separate
+hardware dispatch. They enforce bookkeeping caps/deadline, not physical operation.
+The existing live launcher does not read/enforce the ledger; the coordinator must
+match its authorized action plan. Failed or unobserved transmission is never assumed
+not to have moved the rover.
+
+After the completed/disconnected segment, one command combines saved motion validation
+and inventory, then another associates evidence with the reserved budget:
+
+```powershell
+pwsh -NoProfile -File ./src/tools/review_segment.ps1 -Session data/<session> -Run <run> -Output data/<session>/analysis/<new-output>-review
+pwsh -NoProfile -File ./src/tools/workflow_state.ps1 -State <state> -Action import-run -Run <run> -ReservationId segment-01
+```
+
+Review outputs: decision.json, inventory.json, report.md and validation/. Explicit
+predicates cover nonempty complete trials, pre/post rest, clean events/cleanup and
+battery support. Missing/failed evidence stays unsupported. Imports and reservations
+are idempotent only for unchanged evidence/association; changed evidence, duplicate
+associations or unknown accounting require review. Full reservations plus unlinked
+observed motion consume budget, without double charging linked runs. Saved N4 send
+counts remain lower bounds because send events are written after socket transmission.
+State changes use exclusive locks and atomic replacement. worker/request/update-request
+actions maintain assignments/backlog; they do not spawn agents or set live permission.
+
+### Session report and figure
+
+```powershell
+pwsh -NoProfile -File ./src/tools/session_brief.ps1 -Session data/20261009085621235 -LastRun 20261009094727199 -Output data/20261009085621235/analysis/<new-output>-brief
+```
+
+Use a new output directory. Session JSON/Markdown/HTML retains failed/unknown evidence,
+battery/echo values, signed changes, host timing and saved-image links. Summary/review/
+state tools operate offline and protect raw logs/captures. The [saved class report](data/20261009085621235/analysis/codex-native-session-brief/report.html)
+and [last-segment card](data/20261009085621235/analysis/codex-native-segment-review/decision.json)
+refer to historical October9 data, not current sensor observations.
+
+The [workflow PDF](output/pdf/rover-exploration-workflow.pdf) is a visually checked
+A3 landscape vector figure showing the decision loop, native profiles, tools, hardware
+and durable state. Its [generator](src/tools/draw_workflow_pdf.py) used project Python
+and bundled pure-Python ReportLab appended after project packages; no dependency or
+persistent environment change. Do not prepend all bundled Python3.12 packages to the
+Python3.13 venv, which previously caused a Pillow/native-package mismatch.
+
+Start classroom demonstration offline. Live demonstration requires a defined round
+scope and fresh conditions. Native movement response/rest are supported; independent
+firmware expiry, stopping distance, metric pose/intrinsics, cliff avoidance and a
+validated room map remain unverified. No new package, connector, plugin, automation
+or firmware change is needed for this preparation workflow.

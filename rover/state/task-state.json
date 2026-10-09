@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "revision": 1,
+  "session": "D:\\projects\\hyohakusha\\data\\20261009085621235",
+  "status": "not_started",
+  "live_authorized": false,
+  "mission": {
+    "objective": "Offline preparation complete; next live round not selected",
+    "max_attempted_pulses": 0,
+    "max_segments": 0,
+    "deadline": null,
+    "max_echo_retries": 0,
+    "pwm": 60,
+    "duration_ms": 200,
+    "actions": [
+      "forward",
+      "left",
+      "right"
+    ]
+  },
+  "runs": {},
+  "reservations": {},
+  "processed_completed_run_cutoff": null,
+  "backlog": {},
+  "workers": {},
+  "history": [
+    {
+      "utc": "2026-10-09T14:52:51.701072+00:00",
+      "action": "create",
+      "details": {
+        "proposal_only": true
+      }
+    }
+  ],
+  "limitations": [
+    "State stores proposals, not human authorization.",
+    "Reservation budgets are bookkeeping; live launchers do not automatically enforce them."
+  ]
+}

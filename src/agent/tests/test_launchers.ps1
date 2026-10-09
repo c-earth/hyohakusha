@@ -26,7 +26,7 @@ try {
         if ($entryName -like 'run_*') { $parameters.SafeAreaAssumed = $true }
         if ($entryName -eq 'run_calibration.ps1') {
             $parameters.TimedCamera = $true
-            $parameters.TurnOnly = $true
+            $parameters.ForwardOnly = $true
             $parameters.Repeats = 2
             $parameters.DurationMs = 200
         }
@@ -65,7 +65,26 @@ try {
         if ($index -lt 0 -or ($values[($index+1)..($values.Count-1)] -join ',') -cne 'forward,left,forward') { throw 'Action argument expansion failed.' }
         if ($values[[array]::IndexOf($values, '--name')+1] -cne 'Argument test') { throw 'Chat name with spaces was split.' }
     }
-    Write-Output 'Four compatibility forwarders and both direct/pwsh exploration launch forms passed offline.'
+    $calibrationText = Get-Content -LiteralPath (Join-Path $projectRoot 'src/tools/run_calibration.ps1') -Raw
+    $calibrationAst = [Management.Automation.Language.Parser]::ParseInput($calibrationText, [ref]$parseTokens, [ref]$parseErrors)
+    if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
+    $calibrationCalls = @($calibrationAst.FindAll({param($node) $node -is [Management.Automation.Language.CommandAst] -and $node.Extent.Text.Contains('-m src.agent.runtime.calibration_session')}, $true))
+    if ($calibrationCalls.Count -ne 1) { throw 'Expected one calibration Python command.' }
+    $calibrationCall = $calibrationCalls[0]
+    $calibrationText = $calibrationText.Replace($calibrationCall.Extent.Text, $calibrationCall.Extent.Text.Replace($calibrationCall.CommandElements[0].Extent.Text, 'Record-Arguments'))
+    $calibrationText = $calibrationText.Replace("`$ErrorActionPreference = 'Stop'", "$recorderFunction`n`$ErrorActionPreference = 'Stop'")
+    if ($calibrationText.Contains('python.exe')) { throw 'Calibration Python command replacement incomplete.' }
+    $calibrationPath = Join-Path $testRoot 'src/tools/run_calibration.ps1'
+    [IO.File]::WriteAllText($calibrationPath, $calibrationText)
+    $values = & $calibrationPath -SessionTimestamp '20261009000000000' -ChatName 'Forward stop test' -SafeAreaAssumed -ForwardOnly -DriveOnly -TimedCamera -Repeats 1 -Speed 60 -DurationMs 200 | ConvertFrom-Json
+    foreach ($pair in @(@('--forward-only','1'), @('--turn-only','0'), @('--drive-only','1'), @('--timed-camera','1'), @('--repeats','1'), @('--pwm','60'), @('--duration-ms','200'))) {
+        if ($values[[array]::IndexOf($values, $pair[0])+1] -cne $pair[1]) { throw "Calibration argument mismatch: $($pair[0])" }
+    }
+    $conflictRejected = $false
+    try { & $calibrationPath -SessionTimestamp '20261009000000000' -ChatName 'Conflict test' -SafeAreaAssumed -ForwardOnly -TurnOnly | Out-Null }
+    catch { if ($_.Exception.Message -notlike '*cannot be combined*') { throw }; $conflictRejected = $true }
+    if (-not $conflictRejected) { throw 'Calibration accepted conflicting direction options.' }
+    Write-Output 'Four compatibility forwarders, exploration launch forms and forward calibration arguments/exclusivity passed offline.'
 } finally {
     $resolvedTestRoot = [IO.Path]::GetFullPath($testRoot)
     if (-not $resolvedTestRoot.StartsWith($tempBase, [StringComparison]::OrdinalIgnoreCase) -or

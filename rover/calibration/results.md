@@ -1,5 +1,50 @@
 # October 9 native-unit calibration results
 
+## Later exploration session and reconstruction diagnostics
+
+Session `data/20261009085621235` completed 43 PWM60/T200 trials:
+27 expiry-schedule forward, one early-N100 forward, nine left and six right.
+Each completed run's validator supports pre/post rest and clean stop/socket-close
+records. Latest battery 7.574 V, minimum in last run 7.533 V. Voltage accuracy
+remains unverified. No reverse or power increase was used in this session.
+
+Two stopped echo refusals under the former >20% gate sent no wheel commands.
+A 12-batch stationary diagnostic showed two ranges, 9094-9134 and 13302-13399 us.
+Their physical cause is unknown. User requested >90% instead; the host gate was
+changed, keeping zero/invalid-echo faults and other motion bounds.
+
+Forward stop comparison `logs/20261009093115318` completed expiry-schedule and
+early-N100 trials with rest support. Host N100 occurred 251.567 and 102.271 ms
+after actual N4 send. Expiry-tagged completion arrived after host stop, so this
+does not isolate firmware expiry or measure physical stop latency/distance.
+Detailed evidence is in `analysis/20261009093240000-stop-comparison`.
+
+After user placed and raised a rigid jar outside the path, three-forward and
+mixed/lateral captures provided object/background differential image motion.
+The larger-baseline report `analysis/20261009095026000-lateral-target` retained
+24 unique static matches (seven jar, 17 background). Jar deviation from fitted
+background H was 14.41 px across seven SIFT correspondences, agreeing with
+14.00 px across 21 LK tracks. Held-out F square-root Sampson median was 3.16 px;
+nonplanar geometry remains uncertain. Camera points upward with limited floor view.
+
+Experimental projective diagnostics retained 21 points with arbitrary projective
+distortion. Initial unique-match epipolar-line holdout was 5.860 px. A third-view
+check of 17 joined tracks, nine train/eight held out, gave 0.882 px held-out
+median reprojection; four jar held-out points gave 1.477 px median. This is
+partial transfer consistency, not a calibrated room model. Source hashes and
+coordinate evidence are retained with the reports. Camera intrinsics, physical
+scale, validated stopping distance and reconstruction quality remain unverified.
+
+One frozen alternative LK matcher comparison on the larger baseline retained
+62 unique static tracks, including 21 jar tracks. A 100 px spatial-cell split
+gave 39 training and 23 held-out tracks: held-out Sampson median 0.520 px,
+p90 1.830 px; eight held-out jar tracks had median 1.037 px. This improves
+epipolar prediction evidence but has no matching common-reference third-view
+tracks. It must not be combined with the previous third-view result as if it
+validated this baseline. Reproducible report: `analysis/20261009100000000-lk-projective`.
+
+Earlier measurements below retain their original methods and conditions.
+
 ## Continued improvements and first local observation pilot
 
 Added timed HTTP camera recording with pre-motion IMU sampling, fresh bias

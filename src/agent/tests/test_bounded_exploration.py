@@ -67,13 +67,23 @@ class ExplorationBoundTests(unittest.TestCase):
             self.assertEqual(probe.sock.messages, [])
 
     def test_echo_shortening_stops(self):
-        """A >20% echo shortening sends stop then raises; no return value."""
+        """A >90% echo shortening sends stop then raises; no return value."""
         probe = ExplorationProbe()
-        with patch.object(CalibrationSession, 'sensors', side_effect=[dict(echo_us=10000), dict(echo_us=7900)]):
+        with patch.object(CalibrationSession, 'sensors', side_effect=[dict(echo_us=10000), dict(echo_us=999)]):
             probe.sensors()
             with self.assertRaises(RuntimeError):
                 probe.sensors()
         self.assertIn(b'"N":100', probe.sock.messages[-1])
+
+    def test_echo_drop_boundary_and_stationary_variation_allowed(self):
+        """Observed 31.7% variability and exactly 90% drops do not stop."""
+        for previous, current in ((13349, 9117), (10000, 1000)):
+            probe = ExplorationProbe()
+            with self.subTest(previous=previous, current=current), patch.object(
+                    CalibrationSession, 'sensors', side_effect=[dict(echo_us=previous), dict(echo_us=current)]):
+                probe.sensors()
+                self.assertEqual(probe.sensors()['echo_us'], current)
+            self.assertEqual(probe.sock.messages, [])
 
     def test_mixed_plan_runs_once_in_exact_order(self):
         """A turn can collect calibration evidence within a three-action segment."""
@@ -108,7 +118,7 @@ class ExplorationBoundTests(unittest.TestCase):
         probe = ExplorationProbe(('left', 'forward'))
         probe.previous_echo = 10000
         with patch.object(CalibrationSession, 'acquire_trial') as acquire, \
-                patch.object(CalibrationSession, 'sensors', side_effect=[dict(echo_us=4000), dict(echo_us=3000)]):
+                patch.object(CalibrationSession, 'sensors', side_effect=[dict(echo_us=4000), dict(echo_us=399)]):
             probe.acquire_trial(0, 'left', 1, False)
             self.assertIsNone(probe.previous_echo)
             probe.sensors()

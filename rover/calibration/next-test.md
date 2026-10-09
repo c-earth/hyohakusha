@@ -1,76 +1,79 @@
-# Next live session: calibrate while exploring
+# Next round: exploration first, analysis in parallel
 
-Offline preparation is complete for bounded local collection. The user has a
-relatively safe prepared area and wants calibration to continue during
-exploration. Read WORKFLOW.md for the decision loop. The runtime selects no
-route itself; the main agent interprets evidence and freezes each segment.
-This is a runbook, not an already-authorized hardware session.
+This is a proposed runbook, not live authorization. The next round collects useful
+new views while calibration continues. Reconstruction and camera intrinsics are
+background questions, not prerequisites for every supported local pulse. See
+[WORKFLOW.md](../../WORKFLOW.md) for decision diagrams, hierarchy and worker contracts.
 
-## After charging
+## Freeze the round brief before connection
 
-1. October 9 UNO build is installed with all 19,762 flash bytes read-back verified.
-   Scope initial stopped/bounded protocol and physical stop verification first.
-   Keep the saved October 8 build available.
-2. Establish Wi-Fi/Cam switch, close other controllers, then run one stopped
-   battery/gyro/camera preflight. N1 must be valid and at least 7.0 V; bias and
-   image-rest gates must pass. Fresh observations are required after charging.
-   Recheck the camera's view/pan after any power cycle; saved camera.json and
-   historical command 100 are not current position feedback.
-3. Start exploration with **one forward PWM60/T200 action**, once its path and
-   stopping allowance fit the prepared area. It records fresh stopped bias,
-   raw sensors, continuous camera/IMU, N100 and settling evidence.
-4. Disconnect and assess the saved run. If supported, select the next segment
-   of 1-3 forward/left/right actions from the stopped views and response. A turn
-   needs swept-body clearance. Capture translated overlapping views as useful
-   reconstruction input; retain them without claiming metric pose.
-5. Continue calibration during those segments: direction/sign, response spread,
-   gyro drift, image overlap, raw floor/echo changes and settling. Use the
-   focused turn comparison below only when that specific question warrants it.
-   Do not make all eight turn trials a prerequisite for each local segment.
+Read AGENTS.md, the coordinator skill and current task checkpoint first.
+Record the objective and explicit live scope, prepared-area/body/path/swept-turn
+clearance assumptions, maximum attempted pulses and segments, deadline, and retry
+allowance. Current exploration is 1-3 forward/left/right PWM60/T200 actions per
+segment, no reverse or escalation. The coordinator manages the overall cap; the
+runner enforces segment limits only. Choose actual round limits before executing;
+this document supplies no automatic total allowance.
 
-Proposed first-session cap: one preflight plus three exploration segments total,
-first segment one action and the next two at most three each: **seven pulses,
-PWM60/T200, at most 1,400 ms total commanded duration**. The runner enforces its
-per-segment plan; the main agent tracks the overall session cap. No reverse,
-power increase, automatic retry or unplanned movement. A fault/refusal ends the
-session and retains partial evidence. These bounds remain a proposal until the
-live session is authorized; charge completion alone does not execute it.
+October 9's 43 trials support native response and later rest, including early N100.
+Independent expiry and physical stopping clearance remain unverified. Latest saved
+battery/pose are historical; obtain fresh evidence after reconnect/setup changes.
+The prior seven-pulse/no-retry proposal is superseded, not a current permission.
 
-## Commands for that bounded session
+## Start and continue
 
-Use the same 17-digit New York session-start timestamp and chat name. Replace
-placeholders; commands here are references. Run from PowerShell 7 at project root.
+1. Re-establish rover Wi-Fi/CAM, close other controllers, verify prepared-area
+   assumptions and camera view. One main TCP owner; workers remain offline.
+2. Within the authorized round, run one stopped preflight. Valid N1 >=7.0 V,
+   camera and bias/rest support are required. Do not infer current servo feedback
+   from old camera.json or command history.
+3. Freeze one first action when current response/view is uncertain; select it from
+   fresh evidence. Then use 1-3 actions per supported segment within remaining caps.
+4. After disconnect, validate saved rest/completeness/cleanup and inspect sensors
+   and latest images. Dispatch completed paths to background workers and immediately
+   select the next supported segment. Each runner already has its baseline and
+   per-trial bias; do not duplicate preflight/baseline before each successful segment.
+5. Reserve the frozen plan in selected round state before the separate live launcher;
+   import the resulting run with its reservation ID after review. Ledger checks do
+   not grant permission or automatically bind the hardware launcher.
+6. Collect worker requests when the route fits; keep the rest as backlog. Stop on
+   material faults, unsupported clearance or overall completion/caps/deadline.
 
-```powershell
-pwsh -NoProfile -File ./src/tools/run_calibration.ps1 -SessionTimestamp <session-start> -ChatName '<chat-name>' -SafeAreaAssumed -GyroCalibrationOnly
-pwsh -NoProfile -File ./src/tools/run_exploration.ps1 -SessionTimestamp <session-start> -ChatName '<chat-name>' -SafeAreaAssumed -Actions 'forward'
-```
-
-After reviewing that segment, a chosen later segment can use the same entry with
-`-Actions 'forward,left,forward'`, or another supported 1-3-action plan. This is
-an example, not a preselected route through the room. Every action is sequential;
-only IMU readings and HTTP-only camera observations overlap wheel motion.
-Each segment still records its 12-batch baseline; do not launch collect_baseline
-separately as a duplicate prerequisite. Old src/agent launcher paths still work.
-
-After each disconnect, inspect printed Logs/Captures paths and run:
+Templates; replace placeholders and explicitly choose Actions:
 
 ```powershell
-.venv\Scripts\python.exe -B -m src.agent.analysis.validate_motion data/<session-start>/logs/<run> --output data/<session-start>/analysis/<analysis-start>-validation
+pwsh -NoProfile -File ./src/tools/run_calibration.ps1 -SessionTimestamp <session> -ChatName '<name>' -SafeAreaAssumed -GyroCalibrationOnly
+pwsh -NoProfile -File ./src/tools/run_exploration.ps1 -SessionTimestamp <session> -ChatName '<name>' -SafeAreaAssumed -Actions '<chosen-actions>'
+.venv\Scripts\python.exe -B -m src.agent.analysis.validate_motion data/<session>/logs/<run> --output data/<session>/analysis/<new-output>-validation
+pwsh -NoProfile -File ./src/tools/review_segment.ps1 -Session data/<session> -Run <run> -Output data/<session>/analysis/<new-output>-review
+pwsh -NoProfile -File ./src/tools/session_brief.ps1 -Session data/<session> -LastRun <run> -Output data/<session>/analysis/<new-output>-brief
 ```
 
-Review trial completion, pre/post rest support, gyro gaps, command/stop timing,
-battery and positive cleanup records; inspect before/after/timed frames before
-choosing more motion. Retain unsupported trials. Mixed exploration segments may
-not have enough matched turn trials for a fitted/held-out angle comparison; that
-result is unknown rather than a reason to invent angle/position estimates.
+Use review_segment instead of a separate validation invocation on the immediate
+decision path: it runs validation and inventory together. Validation exit 0 means
+a report was saved; inspect acquisition_complete,
+cleanup_recorded, event_errors and per-trial pre/post rest support. The summary
+is an inventory, not a clearance/rest classifier. Preserve failed/partial trials.
 
-Software readiness does not establish automatic obstacle avoidance, cliff
-stopping, physical stopping distance, absolute heading or room coverage. The
-prepared area is a user assumption. Floor values are logged, not classified as
-edges. Echo shortening is a stopped change gate, with a fresh reference after
-turns. If relevant clearance or evidence is unsupported, stop and assess.
+## Recovery and completion
 
+Current host echo trigger is >90% shortening at comparable unchanged heading;
+exactly 90% is allowed and turns reset the reference. Zero/invalid echo faults.
+Approximate range uses echo_us*0.0001715 m, not a verified body/path clearance.
+A very short absolute echo or observed approach merits reassessment even when the
+percentage gate passes. Floor ADC has no validated cliff detector.
+
+If the round includes echo retries, allow up to three separately logged echo-only
+recoveries with fresh stopped evidence, clean cleanup and a specific recovery reason.
+Never replay an entire partially moved segment. Other battery/IMU/camera/connection
+faults end acquisition and require diagnosis. Do not loosen gates/increase power.
+
+Complete when the defined coverage/data objective, cap or deadline is reached;
+report actual attempted/completed pulses, observations, unknowns and cleanup.
+Supported local collection does not establish metric pose, independent expiry,
+physical stopping distance, autonomous coverage or a Euclidean room model.
+
+The focused reference below is optional; it is not a prerequisite to exploration.
 ## Optional focused turn comparison
 
 Proposed experiment, not permission to run. The reorganized controller has
@@ -104,7 +107,7 @@ Cam switch, closed ELEGOO app and no other TCP controller. Use a fresh 17-digit
 New York chat-start timestamp and the current chat name. Placeholders below
 must be replaced; these are command templates, not runnable defaults.
 
-For this first session after refactoring, inspect the source/flags and latest
+Before this optional comparison, inspect the source/flags and latest
 offline test result before connecting. Runtime changes now refuse a scheduled
 start more than 50 ms late, require at least two pre-motion camera frames with
 the latest received within 500 ms, and recheck bias age at dispatch. Treat a

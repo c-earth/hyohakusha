@@ -33,6 +33,8 @@ Methods produce files and send rover commands; measurements remain native units.
 
     def __init__(self, args):
         """Validate input and create session evidence folders; returns None."""
+        if args.turn_only and getattr(args, 'forward_only', 0):
+            raise ValueError('Turn-only and forward-only cannot be combined')
         if not args.safe_area_assumed:
             raise ValueError('Explicit safe-area assumption required')
         datetime.strptime(args.session, '%Y%m%d%H%M%S%f')
@@ -66,6 +68,7 @@ Methods produce files and send rover commands; measurements remain native units.
         self.repeats = args.repeats
         self.imu_plan = args.imu_plan
         self.turn_only = bool(args.turn_only)
+        self.forward_only = bool(getattr(args, 'forward_only', 0))
         self.trials = []
         self.frames = []
         self.current_gyro_bias_ns = None
@@ -155,6 +158,7 @@ Methods produce files and send rover commands; measurements remain native units.
                        source_hashes=sources, imu_plan=self.imu_plan, timed_camera=self.timed_camera,
                        repeats=self.repeats, pwm=self.pwm, duration_ms=self.duration_ms,
                        drive_only=self.drive_only, turn_only=self.turn_only,
+                       forward_only=self.forward_only,
                        battery_only=self.battery_only, gyro_only=self.gyro_only,
                        directions=self.directions(), stop_modes=self.stop_modes())
             self.send(dict(N=100))
@@ -259,6 +263,8 @@ Methods produce files and send rover commands; measurements remain native units.
 
     def directions(self):
         """Return calibration direction/name pairs; no inputs or hardware action."""
+        if getattr(self, 'forward_only', False):
+            return (('forward', 3),)
         return (('left', 1), ('right', 2)) if self.turn_only else (('forward', 3), ('backward', 4), ('left', 1), ('right', 2))
 
     def trial_plan(self):
@@ -330,5 +336,6 @@ if __name__ == '__main__':
     parser.add_argument('--repeats', type=int, choices=(1, 2, 3), default=3)
     parser.add_argument('--imu-plan', choices=('alternate', 'gyro-focus', 'adaptive'), default='adaptive')
     parser.add_argument('--turn-only', type=int, choices=(0, 1), default=0)
+    parser.add_argument('--forward-only', type=int, choices=(0, 1), default=0)
     parser.add_argument('--safe-area-assumed', action='store_true')
     CalibrationSession(parser.parse_args()).run()

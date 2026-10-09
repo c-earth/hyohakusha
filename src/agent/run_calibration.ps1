@@ -12,7 +12,8 @@ param(
     [switch]$TimedCamera,
     [ValidateRange(1,3)][int]$Repeats = 3,
     [ValidateSet('alternate','gyro-focus','adaptive')][string]$ImuPlan = 'adaptive',
-    [switch]$TurnOnly
+    [switch]$TurnOnly,
+    [switch]$ForwardOnly
 )
 $ErrorActionPreference = 'Stop'
 & (Join-Path $PSScriptRoot '../tools/run_calibration.ps1') @PSBoundParameters

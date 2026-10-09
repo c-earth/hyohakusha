@@ -1,128 +1,211 @@
-# Rover experiment workflow
+# Codex-native rover workflow
 
-The accepted sequence is image-analysis assessment, initial drive/stop checks,
-then bounded exploration with continuing calibration and reconstruction captures.
-The user has prepared a relatively safe area and explicitly accepts learning
-while exploring. Full metric calibration is not a prerequisite for every short
-native-unit move there. Initial image assessment is complete; calibration remains
-partial. General autonomous search, metric pose and reconstruction remain open.
-Read [handoff](handoff.txt) and [next session](rover/calibration/next-test.md).
+The main coordinator collects useful new views in an explicitly scoped exploration
+round. It chooses the route, owns the rover controller and records decisions.
+Offline workers analyze completed evidence concurrently. Their pending work does
+not block a supported segment; significant findings can change its next decision.
+The rover stops between pulses while the coordinator continues planning.
 
-## One task, one question
+## Native components and persistent state
 
-Before editing or acquiring data, record:
+| Component | Maintained location | Responsibility / verified status |
+|---|---|---|
+| Project instructions | AGENTS.md | Retrieval, authorization, evidence and controller ownership |
+| Coordination skill | .agents/skills/rover-coordinator/SKILL.md | Reusable main-agent workflow; visible in this chat's skill catalog |
+| Experiment skill | .agents/skills/rover-experiment/SKILL.md | Existing experiment preparation and assessment routing |
+| Native specialist profiles | .codex/agents/rover_map.toml, rover_images.toml, rover_evidence.toml | Required TOML fields parsed; actual client discovery/spawn not yet verified |
+| Approval rules | .codex/rules/*.rules | Existing command approval policy; does not authorize a task or prove physical safety |
+| Project task state | rover/state/task-state.json and selected round-state file | Explicit scope proposals, reservations, evidence cutoff, workers, backlog and history |
+| State shortcut | src/tools/workflow_state.ps1 | Atomic locked offline updates, idempotent imports and conservative bookkeeping |
+| Immediate review | src/tools/review_segment.ps1 | Saved completion/rest/cleanup/events/battery predicates |
+| Session summary | src/tools/session_brief.ps1 | Saved trial/sensor/timing inventory and HTML report |
+| Native generated memory | Codex-managed memory controls/store | Supplemental prior-chat context; host setting not inspected or changed |
+| Lifecycle hooks | None | User requested removal; no hook file/handler remains |
+| MCP/plugins/automations | Existing app tools only | No new connector, plugin, scheduler or autonomous hardware job installed |
 
-- Question and the decision it will inform.
-- Authorized actions: edits, offline execution/tests, hardware session,
-  installation or firmware changes, as applicable.
-- Fixed configuration, movement/session bounds and stop conditions.
-- Evidence required, fit/validation split and completion criteria.
-- Output paths and known limitations.
+Custom agents are native standalone TOML definitions, not separate role Markdown
+prompts. Model, reasoning and permission settings inherit from the parent; offline
+boundaries are explicit instructions, not an independent tool/network ACL. Current
+collaboration tools do not expose a native-profile selection parameter. Do not claim
+that a generic worker spawned here used a native profile. The next compatible client
+must actually load/select the profile before reporting that integration verified.
+[Official custom-agent documentation](https://learn.chatgpt.com/docs/agent-configuration/subagents).
 
-One explicit request can authorize the complete defined task, including its
-checks and cleanup. Do not ask again within that scope. A proposal or a historical
-authorization does not authorize a new session. Clarify material ambiguity.
+Skills belong under .agents/skills. Their availability is different from custom-agent
+loading. [Official skill documentation](https://learn.chatgpt.com/docs/build-skills).
 
-## Prepare, acquire, assess
+Codex-generated memory is managed through product controls, not by hand-editing its
+internal store. It is asynchronous and cannot replace current mission accounting,
+explicit authorization or fresh sensors. Read AGENTS, current handoff and selected
+project state after resume/compaction. Durable project state is our domain-specific
+mission ledger; it is not a replacement for Codex's internal chat/task state.
+[Official memory documentation](https://learn.chatgpt.com/docs/customization/memories).
 
-1. Read current context and inspect the relevant implementation. Resolve stale
-   documentation before treating it as a command contract.
-2. Prepare code and run only authorized offline checks. Freeze acquisition
-   settings and acceptance criteria before opening control TCP.
-   After runtime changes, verify the offline suite and command imports first;
-   the next live session validates those changes within the existing bounds.
-3. Establish fresh stopped observations within the authorized session. Battery,
-   camera, bias and required clearance gates must pass before movement.
-4. Execute the fixed experiment through one TCP owner. Log raw commands, replies,
-   failures, images, timing brackets and configuration. Never infer rest from an
-   acknowledgment or treat a zero ultrasound echo as free space.
-5. Attempt N100 cleanup and close TCP on completion or fault. Report cleanup
-   failures; physical rest requires observation. Analyze after disconnecting.
-6. Preserve failed/rejected trials. Fit on the designated subset and evaluate
-   held-out trials without refitting to them. Report missing support as unknown.
-   Exclude incomplete/rest-rejected evidence from fits. Require positive cleanup
-   records; silence in the log does not prove a successful close.
-7. Decide: advance the named milestone, repeat with a specific justified change,
-   or stop at the unresolved limitation. Update handoff and journal.
+Hooks were evaluated and removed at the user's request. They are not secretly used
+for state restoration or automatic continuation. Adding them later would require a
+specific use case and Codex's hook review/trust. [Official hook documentation](https://learn.chatgpt.com/docs/hooks).
 
-A fault ends acquisition. Repair within authorized scope while disconnected;
-a new hardware run must be covered by the task's session/retry bounds. Do not
-relax gates, add trials or increase power to obtain a favorable result.
+## Decision loop
 
-## Distinct milestones
+```mermaid
+flowchart TD
+  Resume[Read instructions, handoff and current state] --> Scope[Confirm authorized round and fresh conditions]
+  Scope --> Observe[Stopped battery, camera, bias and required clearance]
+  Observe --> Select[Choose a useful new view from current evidence]
+  Select --> Budget[Reserve frozen 1-3 actions within round caps and deadline]
+  Budget --> Run[One TCP owner acquires bounded segment]
+  Run --> Close[N100 attempt, disconnect, retain partial evidence]
+  Close --> Review[Offline review: completion, rest, cleanup, sensors and images]
+  Review --> Ledger[Import run linked to reservation; update state and backlog]
+  Ledger --> Decision{Significant fault or unsupported clearance?}
+  Decision -- Yes --> Diagnose[Stop and bounded diagnosis/recovery]
+  Diagnose --> Recover{Evidence supports another authorized attempt?}
+  Recover -- Yes --> Observe
+  Recover -- No --> Help[Request concrete missing information or physical help]
+  Decision -- No --> Done{Objective, deadline or budget reached?}
+  Done -- No --> Select
+  Done -- Yes --> Finish[Stopped closeout, handoff and journal]
+  Close -. Completed immutable evidence .-> Workers[Native offline specialists]
+  Workers -. Supported findings or opportunistic requests .-> Ledger
+```
 
-| Milestone | Evidence needed |
+The exploration runner enforces PWM60/T200 ms and 1-3 forward/left/right actions.
+There is no reverse, automatic power escalation or autonomous route planner.
+State reservations check bookkeeping caps/deadline, but the live launcher does not
+read or enforce the ledger. The coordinator must reserve and match the exact plan
+before dispatch. A successful reservation never grants live permission.
+
+Count full frozen reservations conservatively before dispatch. Link each resulting
+run to its reservation to avoid double charging. Unlinked imported runs consume
+additional observed budget. Unknown/malformed/failure accounting blocks further
+reservations. Do not discard a reservation because a transport result is uncertain.
+Send events are logged after socket send, so logged N4 counts alone are lower bounds;
+a partially sent unlogged command cannot be reconstructed from a manifest.
+
+## Hierarchy and tool connections
+
+```mermaid
+flowchart LR
+  User[User: objective and physical assumptions] --> Main[Main coordinator]
+  Instructions[AGENTS + skills + durable state] --> Main
+  Main --> Runner[run_exploration.ps1]
+  Runner --> Runtime[BoundedExplorationSession / CalibrationSession]
+  Runtime --> TCP[RoverConnection + MotionSampler: sole TCP owner]
+  TCP --> UNO[UNO: wheels, IMU and stopped sensors]
+  Runtime --> HTTP[TimedCameraRecorder: HTTP only]
+  HTTP --> ESP[ESP32 camera]
+  Runtime --> Data[Saved events, trials, telemetry and JPEGs]
+  Data --> Review[review_segment + session_brief]
+  Review --> State[workflow_state: budgets, runs, backlog, workers]
+  State --> Main
+  Data --> Map[rover_map]
+  Data --> Images[rover_images]
+  Data --> Evidence[rover_evidence]
+  Main -. Scoped offline tasks .-> Map
+  Main -. Scoped offline tasks .-> Images
+  Main -. Scoped offline tasks .-> Evidence
+  Map --> State
+  Images --> State
+  Evidence --> State
+```
+
+With authorized delegation, reuse workers; do not spawn them per image. The main
+alone writes the shared state ledger and chooses motion. Workers get completed-run
+cutoff, focused question, authorized execution/output scope and unique output path.
+They return severity, claim, exact evidence, uncertainty and any requested view with
+priority/expiry. The coordinator records requests as pending, collected, deferred or
+cancelled. A map suggestion never establishes a traversable corridor or swept clearance.
+
+- rover_map: landmarks, observable view links, revisits and unknown directions.
+- rover_images: static/dynamic features, overlap/parallax and supported diagnostics.
+- rover_evidence: faults, timing, rest/cleanup support and contradictory claims.
+
+The map remains a view/landmark graph until localization is supported. Intrinsics,
+metric pose and Euclidean reconstruction remain open. Collect translated overlapping
+views when they fit the route; do not halt useful local collection for reconstruction.
+
+## Round preparation and productive cycle
+
+Define objective, live action scope, prepared-area/body/path/swept-turn assumptions,
+max attempted pulses and segments, deadline, retry allowance and completion evidence.
+Archive the authorization reference separately from the proposal ledger. Current
+state is not_started with zero/zero caps: no new live round has been selected.
+
+At round start re-establish Wi-Fi/CAM, closed other controllers, fresh battery/view/
+bias support and required clearance. Old images, voltage, echo, servo commands and
+movement history do not establish current conditions. Use a single first action
+when uncertain; freeze up to three only when the whole segment fits known clearance.
+
+Each segment already records a 12-batch baseline and fresh bias per trial. Keep those
+checks; avoid duplicate standalone baselines/preflights before successful segments.
+After disconnect inspect actual review predicates, sensor trends and images. Then
+update state, dispatch immutable paths and choose the next supported segment without
+waiting for heavy background fitting. Queue data when all workers are busy.
+
+Give concise progress updates at least once a minute during work. Reserve time for
+stopped closeout. Stop on objective/cap/deadline or unresolved material fault; don't
+leave rover access unused while waiting for noncritical analysis.
+
+## Stop and recovery decisions
+
+| Evidence | Coordinator decision |
 |---|---|
-| Repeatable native-unit response | Repeated command/image/IMU response, rest support and held-out checks under stated conditions. |
-| Absolute heading | Independent angular reference and supported sensor scale/timing; fitting pixels to nominal gyro angle is insufficient. |
-| Translation | Independent scale or supported relative geometry, timing and quantified uncertainty; accel integration alone is insufficient. |
-| Motion clearance | Body/path/swept-turn clearance with stopping allowance and uncertainty for intended conditions. |
-| Bounded search | Defined area, coverage and session limits, enforced observation/action gates and fault handling. |
-| Reconstruction | Suitable translated views, camera geometry, reconstruction quality criteria and agreed relative/metric output. |
+| N1 <7.0 V, invalid or missing battery | End acquisition, attempt stop/close; resolve battery evidence |
+| IMU/camera/connection fault, missing cleanup or unsupported rest | Retain partial run and diagnose disconnected; no blind replay |
+| >90% valid echo shortening at unchanged heading | Stop/reassess; exactly90% allowed, turn resets reference |
+| Echo-only refusal with clean cleanup/no other fault | Up to three separately logged retries within authorized allowance, fresh evidence and specific recovery reason |
+| Zero/invalid echo or very short absolute distance | Unknown/risky evidence; reassess required body/path/stopping clearance |
+| Worker computation pending or reconstruction unsupported | Continue supported exploration; retain the uncertainty |
+| Worker asks for a view | Backlog it and collect when route fits unless urgent supported evidence changes movement |
 
-Progress on one milestone does not complete the others. Calibration and bounded
-exploration may share a segment: refresh stopped bias, execute one short action,
-observe settling and retain camera/IMU/floor/echo evidence. Reassess between
-segments before selecting more motion. Independent scale/clearance checks remain
-requirements for larger or metric motion; local data collection need not wait
-until every calibration milestone is complete.
+Never replay a whole failed segment that may already have moved. Inspect N4 sends,
+reservation and trials; freeze only the intended next actions. A turn needs swept
+clearance, not just a permissive echo ratio. No threshold relaxation/power escalation
+for favorable results. Persistent unsupported evidence needs physical help.
 
-## Responsibilities
+Echo approximation: echo_us*0.0001715 m at343 m/s round-trip speed. Drop percentage:
+100*(previous-current)/previous, only for positive echoes/comparable direction.
+Historical stationary9.1/13.4 ms clusters changed roughly31-32% without demonstrated
+approach. Final3518 us converts to0.603 m to a reflecting target, not full clearance.
+Floor ADC has no validated cliff gate; upward camera sees little floor.
 
-The main agent prepares the experiment, interprets evidence and reports the stage
-decision. Deterministic controller code owns TCP, enforces implemented command
-bounds and attempts stop cleanup; proposed gates must not be described as live.
+## Offline shortcuts and classroom demonstration
 
-Use one main agent by default. With explicit delegation, subagents may review
-controller behavior or analyze saved data independently. They never acquire
-control TCP or send rover commands. Their findings go through the main agent.
+Current checkpoint:
 
-Rover execution is sequential: one TCP owner serializes movement and pan.
-N2/N3 requests from that owner may observe an active drive, one sensor request
-pending at a time. HTTP camera recording can run alongside observation and
-never sends control commands. N100 takes priority; blocking N7 waits until stopped.
+```powershell
+pwsh -NoProfile -File ./src/tools/workflow_state.ps1 -State rover/state/task-state.json -Action status
+```
 
-## Closeout
+For a newly scoped round, create a NEW state file with the selected values, then
+reserve each segment before the separate authorized live launcher:
 
-Keep handoff short: current capabilities, latest evidence, material unknowns,
-accepted limits and one next experiment. Put detailed run records and superseded
-claims in journal. README owns current setup/command facts; procedure owns
-detailed operating gates; results owns measured findings.
+```powershell
+pwsh -NoProfile -File ./src/tools/workflow_state.ps1 -State data/<session>/analysis/<new-round>/state.json -Action create -Session data/<session> -Objective '<objective>' -MaxPulses <cap> -MaxSegments <cap> -Deadline '<ISO time with offset>' -MaxEchoRetries <0-3>
+pwsh -NoProfile -File ./src/tools/workflow_state.ps1 -State <state> -Action reserve -Id segment-01 -Actions '<frozen-actions>'
+pwsh -NoProfile -File ./src/tools/review_segment.ps1 -Session data/<session> -Run <run> -Output data/<session>/analysis/<new-output>-review
+pwsh -NoProfile -File ./src/tools/workflow_state.ps1 -State <state> -Action import-run -Run <run> -ReservationId segment-01
+```
 
-Use the project rover-experiment skill for preparing/assessing experiments.
-Keep shared control in src/control, experiment policy in src/agent/runtime,
-analysis/tests in src/agent/analysis and src/agent/tests, and launchers in
-src/tools. Old PowerShell entry paths forward to those launchers.
-Firmware proposals remain separate from host changes so
-the command protocol and motor response are not changed incidentally.
+State updates lock and atomically replace the JSON. Same unchanged imports/reservations
+are idempotent; changed evidence/association or ambiguous accounting requires review.
+Track workers and requested views using worker/request/update-request actions. No state
+command spawns agents, contacts hardware, sets live_authorized true or overrides scope.
 
-## Implemented source organization
+Saved class report:
 
-| Location | Responsibility |
-|---|---|
-| src/control/connection.py | One TCP owner: tagged send/poll/request, heartbeat, firmware faults and stop/close. No experiment folders or calibration policy. |
-| src/control/motion.py | Pulse timing and one pending IMU request; stop takes priority and the last reply drains before stopped sensing resumes. |
-| src/control/timed_camera.py | HTTP-only camera worker; optional raw device timestamp plus host brackets. |
-| src/control/protocol.py and rover-protocol.psm1 | Python and PowerShell fault parsing. Existing keyboard controller stays here. |
-| src/agent/runtime/ | Calibration/exploration sequencing, action limits, bias/rest policy and evidence records. |
-| src/agent/analysis/ and tests/ | Saved-data interpretation and offline regressions. |
-| src/tools/ | Manual rover tool and four experiment/baseline/survey launchers. src/agent/*.ps1 are compatibility forwarding entries only. |
+```powershell
+pwsh -NoProfile -File ./src/tools/session_brief.ps1 -Session data/20261009085621235 -LastRun 20261009094727199 -Output data/20261009085621235/analysis/<new-output>-brief
+```
 
-RoverConnection is the transport base of CalibrationSession, so there is one
-socket rather than a second controller inside an experiment. It refuses another
-movement/pan while an action is reserved, a second pending sensor read, or
-transport use from another thread. This is not a cross-process lock: the ELEGOO
-app/manual controller must still be closed. N100 releases command ownership
-after transmission; observations establish physical settling.
+Use new outputs; raw logs/captures cannot be overwritten. Show the vector workflow PDF,
+saved sensor/images, explicit decision card and native definitions. Demonstrate how
+new evidence changes a decision and how a pending reconstruction request enters backlog.
+Use retained historical refusals offline; no physical hazard/fault injection in class.
+Success is useful observations and explainable bounded decisions, not a metric room model.
 
-The exploration entry accepts a frozen plan of 1-3 forward/left/right actions,
-each PWM60/T200, with no reverse or automatic power escalation. Default remains
-three forward pulses. Main-agent interpretation selects the next bounded segment
-after disconnecting and reviewing evidence; the runner does not choose a route
-or detect all hazards. A turn resets the echo reference because its new heading
-observes a different direction. Stopped sensor validation still applies.
-
-Source provenance includes control, agent runtime/analysis and tools. Existing
-Python module entries and evidence field names are retained; optional camera
-timestamp and action-plan fields are additive. Data, vendor files, backups and
-the firmware candidate are preserved. See journal for completed offline checks.
+No new package/connector is necessary. Existing OpenCV/NumPy and standard-library state
+support the immediate workflow. External SfM/matchers remain future offline evaluations.
+README owns current command facts, procedure owns gates, results owns measured findings,
+AGENTS owns working constraints and handoff owns current resume state. Preserve historical
+evidence in journal, and preserve raw data, vendor files, backups and firmware artifacts.
