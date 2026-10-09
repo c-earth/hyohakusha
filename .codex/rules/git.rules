@@ -1,0 +1,28 @@
+# Project-local Git approvals; loaded only when the project config layer is trusted.
+# These approvals do not replace task authorization or enforce branch names.
+
+prefix_rule(
+    pattern = ["git", ["status", "diff", "log", "show", "add"]],
+    decision = "allow",
+)
+
+prefix_rule(
+    pattern = ["git", ["branch", "switch", "commit", "push"]],
+    decision = "prompt",
+    justification = "Review branch changes, discarded work, history rewrites, and remote publication before running these Git commands.",
+)
+
+prefix_rule(
+    pattern = ["git", "remote", "-v"],
+    decision = "allow",
+)
+
+prefix_rule(
+    pattern = ["git", "fetch", "origin"],
+    decision = "allow",
+)
+
+prefix_rule(
+    pattern = ["git", "pull", "--ff-only"],
+    decision = "allow",
+)

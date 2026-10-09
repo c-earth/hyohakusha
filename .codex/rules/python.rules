@@ -1,0 +1,17 @@
+# Project-venv interpreter approval, explicitly requested by the user.
+# Loaded at startup only when the project configuration layer is trusted.
+# Covers all interpreter arguments; task authorization remains separate,
+# including the user's requirement for explicit additional-package permission.
+
+prefix_rule(
+    pattern = [".venv\\Scripts\\python.exe"],
+    decision = "allow",
+    match = [
+        "'.venv\\Scripts\\python.exe' -m src.agent.analysis.assess_calibration",
+        "'.venv\\Scripts\\python.exe' -m pip check",
+    ],
+    not_match = [
+        "python -m src.agent.analysis.assess_calibration",
+        "tools/esptool/python.exe -m src.agent.analysis.assess_calibration",
+    ],
+)

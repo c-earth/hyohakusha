@@ -1,22 +1,58 @@
+using module ../control/rover-protocol.psm1
+
 param(
-    [ValidateSet('Sensors','Record','Move','Stop','PanTest','FinePanTest')][string]$Action = 'Sensors',
+    [ValidateSet('Sensors','Record','Move','Stop','PanTest','FinePanTest','PanStep')][string]$Action = 'Sensors',
     [string]$Address = '192.168.4.1',
     [ValidateRange(1,3600)][int]$Seconds = 10,
     [ValidateRange(1,10)][int]$FramesPerSecond = 2,
     [ValidateSet('Forward','Backward','Left','Right')][string]$Direction = 'Forward',
     [ValidateRange(1,100)][int]$Speed = 60,
-    [ValidateRange(50,500)][int]$DurationMs = 200,
-    [switch]$EnableMovement
+    [int]$DurationMs = 200,
+    [switch]$EnableMovement,
+    [ValidateRange(1,1000000)][int]$UltrasoundTimeoutUs = 30000,
+    [ValidateRange(-170,170)][int]$PanStepDegrees = 1,
+    [ValidatePattern('^\d{17}$')][string]$SessionTimestamp,
+    [string]$ChatName
 )
 $ErrorActionPreference = 'Stop'
-function New-CaptureFolder {
-    $stamp = [TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow,
-        [TimeZoneInfo]::FindSystemTimeZoneById('Eastern Standard Time')).ToString('yyyyMMddHHmmssfff')
-    return Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) "data/captures/$stamp"
+class CaptureSession {
+    hidden [string]$Folder
+    hidden [string]$Name
+
+    CaptureSession([string]$dataRoot, [string]$timestamp, [string]$chatName) {
+        if ($timestamp -notmatch '^\d{17}$' -or [string]::IsNullOrWhiteSpace($chatName)) {
+            throw 'Capture actions require -SessionTimestamp yyyyMMddHHmmssfff and -ChatName.'
+        }
+        [DateTime]::ParseExact($timestamp, 'yyyyMMddHHmmssfff', [Globalization.CultureInfo]::InvariantCulture) | Out-Null
+        $this.Folder = Join-Path $dataRoot $timestamp
+        $this.Name = $chatName
+        $infoPath = Join-Path $this.Folder 'info.txt'
+        if (Test-Path -LiteralPath $this.Folder) {
+            if (-not (Test-Path -LiteralPath $infoPath) -or
+                (Get-Content -LiteralPath $infoPath -Raw).TrimEnd("`r", "`n") -cne $chatName) {
+                throw 'Session info.txt is missing or contains a different chat name.'
+            }
+        } else {
+            New-Item -ItemType Directory -Path $this.Folder | Out-Null
+            Set-Content -LiteralPath $infoPath -Value $this.Name -Encoding utf8
+        }
+    }
+
+    [string] NewCaptureFolder() {
+        $stamp = [TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow,
+            [TimeZoneInfo]::FindSystemTimeZoneById('Eastern Standard Time')).ToString('yyyyMMddHHmmssfff')
+        $captureFolder = Join-Path $this.Folder "captures/$stamp"
+        New-Item -ItemType Directory -Path $captureFolder | Out-Null
+        return $captureFolder
+    }
+}
+$captureSession = $null
+if ($Action -in @('Record','PanTest','FinePanTest')) {
+    $dataRoot = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) 'data'
+    $captureSession = [CaptureSession]::new($dataRoot, $SessionTimestamp, $ChatName)
 }
 if ($Action -eq 'Record') {
-    $folder = New-CaptureFolder
-    New-Item -ItemType Directory -Path $folder | Out-Null
+    $folder = $captureSession.NewCaptureFolder()
     Set-Content -LiteralPath (Join-Path $folder 'info.txt') -Value 'camera recording'
     $manifest = Join-Path $folder 'frames.csv'
     'file,request_utc,received_utc' | Set-Content $manifest
@@ -38,6 +74,7 @@ if ($Action -eq 'Record') {
 }
 if ($Action -eq 'Move' -and -not $EnableMovement) { throw 'Movement requires -EnableMovement. First verify sensor communication and clear the surrounding floor.' }
 $client = [Net.Sockets.TcpClient]::new()
+$stream = $null
 try {
     $pending = $client.ConnectAsync($Address,100)
     if (-not $pending.Wait(3000)) { throw 'TCP port 100 connection timed out.' }
@@ -47,11 +84,11 @@ try {
         $data = [Text.Encoding]::ASCII.GetBytes($message)
         $stream.Write($data,0,$data.Length)
     }
-    function Read-Rover([string]$tag) {
+    function Read-Rover([string]$tag, [int]$timeoutMs = 2500, [switch]$AllowNoReply) {
         $timer = [Diagnostics.Stopwatch]::StartNew()
         $buffer = ''
         $lastHeartbeat = -1000
-        while ($timer.ElapsedMilliseconds -lt 2500) {
+        while ($timer.ElapsedMilliseconds -lt $timeoutMs) {
             if ($timer.ElapsedMilliseconds - $lastHeartbeat -ge 500) {
                 Send-Rover '{Heartbeat}'
                 $lastHeartbeat = $timer.ElapsedMilliseconds
@@ -61,26 +98,28 @@ try {
                 if ($value -lt 0) { throw 'Connection closed.' }
                 $buffer += [char]$value
                 if ($value -eq 125) {
+                    [RoverReply]::ThrowIfFault($buffer)
                     if ($buffer -match ('\{' + [regex]::Escape($tag) + '_([^}]+)\}')) { return $Matches[1] }
                     $buffer = ''
                 }
             }
             Start-Sleep -Milliseconds 10
         }
-        throw "No response for $tag. Installed firmware may differ from the stock reference."
+        if (-not $AllowNoReply) { throw "No response for $tag. Installed firmware may differ from the stock reference." }
     }
     if ($Action -eq 'Sensors') {
-        foreach ($item in @(@('ultrasound_cm',21,2),@('floor_left',22,0),@('floor_middle',22,1),@('floor_right',22,2))) {
+        foreach ($item in @(@('ultrasound_us',7,2),@('floor_left',8,0),@('floor_middle',8,1),@('floor_right',8,2),@('battery_v',1,0),@('gyro_raw_xyz',2,0),@('accel_raw_xyz',3,0))) {
             $tag = [string]$item[0]
-            Send-Rover (@{N=$item[1];D1=$item[2];H=$tag} | ConvertTo-Json -Compress)
+            $command = @{N=$item[1];D1=$item[2];H=$tag}
+            if ($item[1] -eq 7) { $command.T = $UltrasoundTimeoutUs }
+            Send-Rover ($command | ConvertTo-Json -Compress)
             $result = Read-Rover $tag
             Write-Output "$tag=$result"
         }
     } elseif ($Action -in @('PanTest','FinePanTest')) {
         $centerAngle = if ($Action -eq 'FinePanTest') { 100 } else { 90 }
         $panAngle = if ($Action -eq 'FinePanTest') { 101 } else { 100 }
-        $folder = New-CaptureFolder
-        New-Item -ItemType Directory -Path $folder | Out-Null
+        $folder = $captureSession.NewCaptureFolder()
         Set-Content -LiteralPath (Join-Path $folder 'info.txt') -Value "camera pan test $centerAngle to $panAngle to $centerAngle"
         try {
             foreach ($step in @(@('center',$centerAngle),@('pan',$panAngle),@('return',$centerAngle))) {
@@ -101,17 +140,25 @@ try {
             Send-Rover '{"N":100}'
         }
         Write-Output "Pan test images saved to $folder. Acknowledgments are not angle measurements."
+    } elseif ($Action -eq 'PanStep') {
+        Send-Rover (@{N=6;D1=$PanStepDegrees;H='pan_step'} | ConvertTo-Json -Compress)
+        $ack = Read-Rover 'pan_step'
+        if ($ack -ne 'ok') { throw 'Unexpected pan increment acknowledgment.' }
+        Write-Output 'Pan increment acknowledged; physical angle is not measured.'
     } elseif ($Action -eq 'Stop') {
         Send-Rover '{"N":100}'
         Write-Output 'Standby command sent; physical stop has not been independently verified.'
     } elseif ($Action -eq 'Move') {
         $directions = @{Left=1;Right=2;Forward=3;Backward=4}
-        Send-Rover (@{N=2;D1=$directions[$Direction];D2=$Speed;T=$DurationMs;H='move'} | ConvertTo-Json -Compress)
-        Start-Sleep -Milliseconds ($DurationMs + 100)
+        Send-Rover (@{N=4;D1=$directions[$Direction];D2=$Speed;T=$DurationMs;H='move'} | ConvertTo-Json -Compress)
+        # Poll for explicit faults during the existing bounded host wait.
+        Read-Rover 'move' ($DurationMs + 100) -AllowNoReply | Out-Null
         Send-Rover '{"N":100}'
         Write-Output 'Timed movement and standby commands sent; verify the physical result.'
     }
 } finally {
-    # Stock camera firmware also sends standby when the TCP connection closes.
+    if ($null -ne $stream) {
+        try { Send-Rover '{"N":100}' } catch { Write-Warning "Stop cleanup failed: $($_.Exception.Message)" }
+    }
     $client.Dispose()
 }
