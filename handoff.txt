@@ -2,6 +2,104 @@ ELEGOO rover project handoff
 Updated: October 9, 2026, America/New_York
 Workspace: D:\projects\hyohakusha
 
+CURRENT RESUME POINT (October 9, latest handoff update)
+- Latest authorized improvement task completed; rover last received N100 and
+  disconnected. Last measured battery was 7.655 V in run20261009012243615;
+  this is historical, not a current battery check. Stop whenever N1 <7.0 V.
+- Calibration remains partial. Gyro bias refresh and camera/rest gates are live
+  verified; absolute gyro scale/heading, accel-derived distance, battery accuracy,
+  ultrasound/floor thresholds and camera intrinsics are not calibrated.
+- Faster turn sampling achieved median vision/gyro disagreement0.588 nominal
+  degrees on four held-out checks. Earlier alternating run gave5.637 degrees;
+  different runs/scenes and small samples prevent a controlled causal claim.
+- Three bounded forward observation pulses completed. This verifies the local
+  pilot execution, not general autonomous exploration, clearance or metric pose.
+- Latest verification:18 offline tests passed, relevant modules compiled, and
+  git diff --check passed. No firmware changes or dependency installation.
+- Next applicable work: independently validate heading/timing and translation
+  estimates before using metric coordinates or increasing power. Keep timed
+  captures, fresh stopped gyro bias and battery gates for any authorized pilot.
+- Procedure/results: rover/calibration/procedure.md and results.md. Detailed
+  completed-task evidence is in journal.md; no new rover operation in this update.
+
+LATEST IMPROVEMENTS / LOCAL OBSERVATION PILOT (October 9, through 01:22)
+- User asked to solve calibration gaps and permits improvement during exploration.
+  Implemented timed_camera.py (HTTP-only worker), validate_motion.py and fixed
+  bounded_exploration.py/run_exploration.ps1 observation pilot. One TCP owner.
+- IMU/camera sample before, during and after short pulses, with host time brackets
+  and per-trial stationary bias. Robust broad-support flow rejects minority
+  tracking outliers; original pixel/noise gates retained. Up to three stopped
+  bias attempts; persistent rejection refuses wheel movement. Raw evidence saved.
+- Data session remains 20261009003013000. Run 20261009010738515 refused before
+  N4; 20261009010822507 retained six trials then rejected bias checks. Full
+  20261009011141154: 16 trials, rest support pre16/post15, held-out heading
+  disagreement median5.637 nominal deg (four checks, alternating sampling).
+- Local pilot 20261009011637215: three forward PWM60/T200 pulses, total600 ms;
+  rest supported before/after all3. No reverse/turn/power increase. observations
+  recorded with metric_position=null/free_space_verified=false. >20% echo
+  shortening stops; this provisional gate is not validated obstacle avoidance.
+- Focused turn run20261009011850801: eight trials, active gyro gaps50–59 ms;
+  held-out median vision/gyro disagreement0.588 nominal deg on four checks;
+  pre/post rest8/8. Scene-specific consistency, not absolute angular calibration.
+  Adaptive turn sampling now favors gyro; rest/translation alternate IMU.
+- Conditional zero-velocity endpoint diagnostics added only with both rest gates
+  supported; never used as validated odometry. Unconstrained accel still drifts.
+- Reports: matching analysis/<run>-validation; source summary in
+  rover/calibration/results.md. Eighteen offline tests passed; full new paths
+  live exercised. Final N1 run20261009012243615:7.655 V, N100/close.
+- Next: continue small observation pilots with these gates, assess independent
+  visual/IMU agreement; no unverified distance/heading model or power escalation.
+  Absolute sensor accuracy, timestamp/range verification, camera intrinsics,
+  stopping distance and room search/coverage remain incomplete. Firmware unchanged.
+
+LATEST INTEGRATION / GYRO BIAS (October 9, through 00:59 New York)
+- User clarified mathematical integration of gyro rate and acceleration, then
+  requested regular gyro calibration. Added integrate_imu.py and gyro_bias.py.
+- Offline integration of 48 existing T200 trials: bias removal, orientation
+  composition, rotating accel into initial sensor frame, stationary reference
+  subtraction and velocity/displacement integrals. Nominal source-based scales
+  conditional; no sensor acquisition timestamps/live range-register verification.
+- Final report/JSON/CSV/PNG under data/20261009003013000/analysis/
+  20261009005347000-inertial-integration-final/. PWM80 median full-turn nominal
+  yaw +15.328/-15.864 deg left/right; accel displacement unreliable due residual
+  velocity/missed onset and timing/bias/gravity uncertainties. No coordinates.
+- Runner now refreshes stopped gyro bias before every wheel trial using five
+  paired IMU reads plus image stationarity gates; maximum bias age 10 s. Unknown
+  rest evidence refuses motion. Host correction only; firmware unchanged.
+- Stationary-only live run logs/20261009005954541 accepted bias raw XYZ
+  [-359.8,62.6,250.2], N1 7.857 V, N100/close. No wheels for this task. Bias
+  capture path verified; full wheel path with these gates not yet live tested.
+- Thirteen integration/bias/battery tests passed. Updated procedure/results.
+  Next: verify sampling/scales and integrated estimates against independent
+  scene/known-motion evidence; do not promote accel integration to odometry.
+
+LATEST CALIBRATION SESSION (October 9, 00:30–00:44 New York)
+- User requested creation/performance of calibration, then explicitly allowed a
+  safe-area assumption and best judgment within the task. No exploration run.
+- Implemented run_calibration.ps1, calibration_session.py and assess_calibration.py;
+  PowerShell entry delegates one Python TCP owner for this calibration. Existing
+  manual PowerShell controllers retained. Procedure/results under rover/calibration/.
+- Session data/20261009003013000, Exploration calibration: stationary baseline,
+  survey, repeated N5/N6 and 72 complete drive trials covering all directions,
+  expiry/early N100, PWM60/T100, PWM60/T200 and PWM80/T200. Last two record
+  alternating raw gyro/accel; host timing is not sensor acquisition timing.
+- Additional T200 run failed during its sixth pulse on a delayed gyro reply;
+  N100 cleanup sent/replied. Five full trials/raw failed-trial traffic retained.
+  Applied TCP_NODELAY, heartbeat reduction and 750 ms sensor timeout; stop
+  deadline independent. Subsequent two full runs completed without that fault.
+- Left/right gyro Z signs established for tested turns; image response and
+  later image stability measured. PWM80 forward early stop had nearly the same
+  image response as expiry; translation stopping advantage remains unresolved.
+  Gyro return is low angular response, not measured physical stop distance.
+- N6 ±1 image response near stationary variation; physical 1-degree response
+  unresolved. ±5 and N5 5-command-degree changes visibly shifted images.
+- User battery rule: stop if N1 <7.0 V. Runner enforces before/after each bounded
+  pulse; invalid reading faults. Final stopped N1 check: 7.857 V. Three offline
+  cutoff tests passed. No physical low-battery event induced. Rover disconnected.
+- Full results/provenance paths: rover/calibration/results.md. Calibration is
+  partial for exploration: metric scale/yaw, stop distance, fused pose/uncertainty,
+  held-out predictive validation and automatic clearance gates unestablished.
+
 READ FIRST
 - AGENTS.md: standing working instructions and authorization requirements.
 - README.md: setup, hardware, paths and usage. Some deployment statements still
@@ -16,9 +114,9 @@ CURRENT DIRECTION AND AUTHORIZATION
 - User revised the sequence: inspect image-analysis tools, calibrate driving first,
   then bounded search while collecting information for reconstruction.
 - Prior direction/stopping trials were functional checks, NOT drive calibration.
-- Retain PowerShell rover control; separate vision/reconstruction component.
-  Technology and communication boundary remain undecided; no Python migration
-  of control or shared rover module has been implemented.
+- Retain existing PowerShell manual control; calibration and local observation
+  pilot have PowerShell entries sharing one Python TCP-owner implementation.
+  No general search/pose runtime exists.
 - User subsequently authorized package installation, runtime verification and
   offline analysis of existing captures with saved diagnostics and summaries.
   This offline task is complete. Later calibration authorization below is current;
@@ -33,9 +131,9 @@ CURRENT DIRECTION AND AUTHORIZATION
 - User will not navigate; intervention starts over. Avoid hitting anything in
   the first place; do not move when path/body/stopping clearance is uncertain.
   Additional packages require explicit user permission. Keep detailed records.
-- User prioritized sandbox permissions before further calibration. Currently
-  holding hardware operations for reload of updated project rules. No wheel
-  movement during this chat's baseline/permission work.
+- Prior permission hold ended with the latest authorized calibration. User now
+  allows safe-area assumption for calibration and asks for best judgment; stop
+  on severe causes or sandbox blocking. Battery N1 <7.0 V is an explicit stop.
 
 CURRENT FIRMWARE
 - UNO current source built and uploaded October 8 using arduino:avr:uno, core 1.8.8.
@@ -190,12 +288,10 @@ NEXT DECISIONS / PROPOSED WORK, NOT AUTHORIZATION
    Accepted results layout: data/<session-start>/analysis/<analysis-start>/,
    alongside captures/logs. Current run retains preliminary outputs at its root;
    final/ contains the completed report, chart, CSVs, provenance and diagnostics.
-2. Resume sensor-relative calibration after permission reload. Stationary baseline
-   recorded in current chat session data/20261008233756000/: 12 sensor batches
-   under logs/20261009001118940 and 4 JPEGs under captures/20261009001136723.
-   Raw echo 8023-8069 us, battery estimate 7.979-8.019 V. Current camera frame
-   shows little near-floor area; path clearance remains unestablished. No wheel
-   movement, no metric scale or calibrated stopping allowance established.
+2. Repeated native-unit command calibration now recorded in session
+   data/20261009003013000; see rover/calibration/results.md. Next: held-out
+   response prediction, gyro/accel/image consistency and pose uncertainty before
+   exploration. Metric scale and physical stop distance remain unestablished.
 3. Define bounded search area, prohibited areas, supervision, movement/session
    limits, stop conditions and sufficient coverage before exploration.
 4. During authorized search, collect images, sensor values, commands, replies,
@@ -204,7 +300,7 @@ NEXT DECISIONS / PROPOSED WORK, NOT AUTHORIZATION
    agree relative vs metric output, quality criteria and export format.
 No calibration, autonomous exploration or reconstruction stage is complete.
 
-CALIBRATION AND SAFETY PROPOSAL (NOT IMPLEMENTED)
+CALIBRATION/EXPLORATION SAFETY DESIGN (PARTLY IMPLEMENTED; SEE LATEST RESULTS)
 - Use stationary sensor repeatability, battery context, gyro bias/gravity axes,
   raw ultrasound/floor baselines and camera forward/return. Then gated short N4
   pulses with sensor/image response and stopping observations; repeat before
@@ -233,18 +329,20 @@ CALIBRATION AND SAFETY PROPOSAL (NOT IMPLEMENTED)
   proposals requiring their own implementation scope; standalone Sensors closes
   TCP, so it cannot provide a continuous turn-rate record for a separate Move.
 
-RESERVED CODE PLAN (ALL SIX FILES ARE EMPTY, NOT IMPLEMENTED)
+CODE PLAN (CALIBRATION/LOCAL PILOT IMPLEMENTED; THREE RESERVATIONS EMPTY)
 - src/agent/rover_session.psm1: RoverSession owns TCP, heartbeat, unique replies,
   command validation, sensor/capture timestamps, logging and best-effort stop.
   SafetyGate rejects unsafe/unknown paths and invalid/over-budget movement.
-- src/agent/run_calibration.ps1: CalibrationRunner uses that session for staged
-  stationary/short-pulse trials; captures commands, sensors, frames and outcomes.
-- src/agent/assess_calibration.py: CalibrationAssessment computes baseline noise,
-  bias, motion response and stopping evidence in native units, with provenance.
+- src/agent/run_calibration.ps1: implemented PowerShell entry for the dedicated
+  calibration_session.py TCP owner, fixed PWM60/80 and T100/200 trial bounds,
+  stationary/pan/drive recording, stop cleanup and user N1<7.0 V cutoff.
+- src/agent/assess_calibration.py: implemented baseline noise/bias, SIFT image
+  response, late stability, raw IMU residuals and receipt-time gyro-return report.
 - src/agent/map_observations.py: ObservationMap tracks observed/traversed areas,
   pose uncertainty and coverage; unknown space must stay distinct from free space.
-- src/agent/run_exploration.ps1: ExplorationRunner applies observe/decide/gate/
-  move/stop loop with run limits and verified-corridor reverse restrictions.
+- src/agent/run_exploration.ps1: implemented fixed three-forward-pulse pilot
+  through bounded_exploration.py, sharing calibration/bias/battery/camera gates.
+  No reverse, turn, power escalation, general room search or verified-free map.
 - src/agent/reconstruct_scene.py: ReconstructionAssessment checks translated-view
   geometry and exports reconstruction only with supported quality/scale claims.
 - Existing collect_baseline.ps1, stationary_survey.ps1 and analyze_captures.py
@@ -252,8 +350,8 @@ RESERVED CODE PLAN (ALL SIX FILES ARE EMPTY, NOT IMPLEMENTED)
   escalation rejected while user switched focus to permissions. Baseline completed
   with approved network access. NewCaptureFolder local variable renamed to avoid
   PowerShell class/property name collision; Sensors/Record subsequently ran.
-- User explicitly requested planning and zero-byte name reservations. Verified all
-  six absent before creation and size 0 afterward; no placeholder was executed.
+- User previously requested six zero-byte reservations. Calibration runner,
+  assessment and local exploration entry now implemented; other three empty.
   No promotion from src/agent/ planned before implementation/evidence supports it.
 
 ACCEPTED RETENTION AND REPOSITORY STATE

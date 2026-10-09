@@ -3,8 +3,9 @@
 This project connects a computer to an ELEGOO Smart Robot Car V4.0 for manual
 control, sensor readings, camera capture, and camera pan tests. The longer-term
 goal is AI-assisted exploration of an accessible surface and 3D reconstruction
-of the interior visible to the camera. Autonomous exploration, mapping, and
-3D reconstruction are not implemented yet.
+of the interior visible to the camera. A fixed three-pulse forward observation
+pilot is implemented. Autonomous room search, mapping, and 3D reconstruction
+are not implemented yet.
 
 ## Hardware
 
@@ -13,9 +14,9 @@ of the interior visible to the camera. Autonomous exploration, mapping, and
 - Forward camera and ultrasound sensor, plus downward floor/light sensors.
 - Camera pan servo; no servo angle feedback or motor encoders have been established.
 
-Camera access, sensor responses, and camera pan/return have been verified.
-Movement commands are implemented in the scripts; their physical results and
-stopping behavior require verification on the rover.
+Camera access, sensor responses, camera pan/return, repeated short movement
+responses and later image/IMU settling have been observed. Metric pose, absolute
+sensor accuracy and physical stopping distance remain unverified.
 
 ## Project structure
 
@@ -192,6 +193,19 @@ the starting command angle:
 ```
 
 ## Calibration and capture data
+
+The bounded calibration runner and its evidence requirements are documented in
+[Calibration procedure](rover/calibration/procedure.md). It records repeated
+N1–N8/N100 observations and short drive/early-stop trials through one TCP owner.
+Run only in the safe calibration area assumed by the user. Its native-unit
+measurements do not establish metric pose or autonomous exploration readiness.
+
+```powershell
+pwsh -NoProfile -File ./src/agent/run_calibration.ps1 -SessionTimestamp 20261009003013000 -ChatName 'Exploration calibration' -SafeAreaAssumed
+# After assessing the initial response, compare 200 ms pulses at PWM 80:
+pwsh -NoProfile -File ./src/agent/run_calibration.ps1 -SessionTimestamp 20261009003013000 -ChatName 'Exploration calibration' -SafeAreaAssumed -DurationMs 200 -Speed 80 -DriveOnly
+.venv\Scripts\python.exe src/agent/assess_calibration.py data/<session>/logs/<run>
+```
 
 The modified UNO source adds N6 for pan-only incremental control:
 `{"N":27,"D1":1,"H":"pan"}` increases the last commanded pan angle by 1 degree;

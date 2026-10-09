@@ -1051,3 +1051,207 @@ OCTOBER 9, 2026: CODE NAME RESERVATIONS AND PROJECT RULES
 
 OCTOBER 9, 2026: PUBLICATION REQUEST
 - User explicitly requested commit and push. Reviewed pending tracked/untracked scope, current branch codex/sequential-rover-control and origin https://github.com/c-earth/hyohakusha.git. Include pending session handling/fix, offline analyzer, baseline/survey scripts, six zero-byte reservations, README/handoff/journal and rover/pip/Python rules. Keep existing .codex/rules/git.rules local per accepted retention decision. Data and .venv remain ignored; no generated captures/reports/dependencies added. Whitespace check passed; no additional project runtime tests or rover operations performed for publication. Commit/push outcome reported in chat.
+# October 9, 2026: exploration calibration procedure and stationary trials
+
+User requested: "Perform and create calibration procedure with all rover commands
+for exploration." Created `rover/calibration/procedure.md`; no firmware edits,
+package installation or exploration execution. Procedure covers N1–N8/N100,
+native-unit limitations, repetitions, distinct direction clearance gates and
+completion requirements.
+
+Executed collect_baseline.ps1 (12 batches), stationary_survey.ps1 (8 N5 views,
+24 echo readings and stop/restore cleanup), rover.ps1 N6 +1, Record (1 frame),
+N6 -1 and Stop sequentially. All invocations exited 0. Session:
+`data/20261009003013000`, name `Exploration calibration`. Baseline logs:
+`logs/20261009003020774`; baseline captures `captures/20261009003038476`;
+survey captures/logs timestamp `20261009003134432`; N6 +1 capture timestamp
+`20261009003211989`. Baseline completion log confirms 12 batches/4 frames.
+Survey output confirms 8 views and cleanup; acknowledgments do not prove angles
+or physical rest. N6 invocations were observed through tool output, without
+per-command JSONL recording; this limits timing/provenance for that check.
+
+Baseline battery estimated range 7.898–7.938 V (mean 7.911333 V), echo
+8033–8081 us (mean 8060.416667 us), floor ADC left 344–345, middle 532–540,
+right 473–474. IMU raw XYZ saved, quantitative bias assessment not performed.
+Survey return echoes at command 100 included 12342/12373/8152 us; this variability
+remains unresolved. No validated numeric obstacle or stopping threshold.
+
+Inspected fresh baseline frame-000003.jpg with view_image: image shows doors,
+walls and a box, with little near-floor space. No wheel command issued because
+body/path/swept clearance is unknown. Requested current clear-area description
+from user before dependent wheel trials. Calibration is partial; N4 motion,
+stopping latency/distance, quantitative pan repeatability and fault handling
+remain incomplete. Procedure read back and git diff --check passed. No new
+runtime controller implemented; reserved calibration files remain empty.
+
+# October 9, 00:35–00:44: repeated calibration and battery cutoff
+
+The user explicitly allowed assuming a safe calibration area, then requested
+best judgment within the task, stopping on severe cause or sandbox blocking.
+They suggested gyro/accel together for coordinate clues and higher power.
+No autonomous exploration executed. Implemented run_calibration.ps1 as a
+PowerShell entry to calibration_session.py, with one Python TCP owner; existing
+manual PowerShell controllers retained. assess_calibration.py computes baseline
+noise, mutual-SIFT image displacement, late stability and raw IMU response.
+Created test_calibration_safety.py, procedure/results docs and README usage.
+No packages installed, firmware modified/flashed or subagents spawned.
+
+Session `data/20261009003013000`, name `Exploration calibration`:
+
+- Run 20261009003509244: 12 sensor baselines, three repeated N5/N6 pan sequences
+  and 24 PWM60/T100 wheel trials. No in-motion IMU in this version.
+- Run 20261009003805349: five complete PWM60/T200 trials, sixth aborted on
+  250 ms gyro timeout. Delayed reply arrived ~265 ms after request during N100
+  cleanup. Both cleanup N100 responses were logged. Failure/raw traffic retained.
+- Applied TCP_NODELAY, reduced redundant heartbeats, raised sensor timeout to
+  750 ms, kept independent host stop deadline, alternated asynchronous N2/N3.
+- Run 20261009003930548: 24 complete PWM60/T200 trials, gyro/accel recording.
+- Run 20261009004129863: 24 complete PWM80/T200 trials, gyro/accel recording.
+- Each full wheel run: three repeats per four directions per expiry/early-stop
+  mode. 72 trials across complete runs plus five completed/one aborted in the
+  retained failed run. Matching captures, logs and analysis preserve evidence.
+
+PWM80 expiry median image displacements: forward 8.182, backward 4.423,
+left 148.106, right 149.711 px. Early-stop medians: 8.091, 2.468, 54.557,
+47.745 px. Forward early-stop advantage is unresolved. Gyro Z signs were
+positive left/negative right in tested 200 ms turns. PWM80 group median raw
+gyro return estimates 247–413 ms after host stop send. Threshold is each-axis
+max(5 baseline std, 50 counts), maintained to recording end for >=200 ms.
+These receipt-time observations are not physical stop latency/distance, yaw or
+coordinates. Accelerometer residuals/count-second gyro integrals saved without
+position integration. Late-frame group medians ~0.333–0.434 px. Final images
+from complete runs visually inspected. No continuous camera motion record.
+
+N5 ±5 command-degree pan steps shifted image ~31–38 px; N6 ±5 ~34–40 px.
+N6 ±1 yielded ~0.36–0.51 px, near stationary variation, so physical response
+at 1 degree is unresolved. Absolute angle/return-position feedback unavailable.
+
+User clarified low battery means N1 voltage <7.0 V. Implemented cutoff before/
+after every bounded pulse: low/nonfinite reading sends N100 and raises; missing
+or malformed response ends run through stop cleanup. No in-pulse battery reads.
+Exactly 7.0 V is permitted. Final BatteryOnly run 20261009004436364 read 7.857 V,
+sent N100 and disconnected. Three offline cutoff tests passed; live low battery
+not induced. Voltage conversion accuracy still unverified.
+
+All three complete live runs and their offline assessments exited 0. The failed
+run exited 1 and remained retained. BatteryOnly exited 0. Python compilation
+and git diff --check passed. Source hash logged at each live run start; installed
+firmware was not re-read during this task. No held-out prediction/fused pose,
+metric scale, stop distance or autonomous clearance model established. Overall
+exploration calibration remains partial; tested higher PWM alone does not make
+longer/higher-power exploration ready. Current summary: rover/calibration/results.md.
+
+# October 9: time integration and recurring stationary gyro bias
+
+User clarified "integrate over time of gyro rate" and "and accel", correcting
+the initial interpretation of integration as combining camera/IMU tools. No
+camera concurrency/workflow integration was implemented under that mistaken
+interpretation. User then suggested regular gyro calibration; implemented host
+bias refresh during stopped intervals before every future wheel trial.
+
+Read active MPU6050.cpp/getdata source: initialize selects ±250 deg/s and ±2g.
+Manufacturer search results support nominal 131 counts/(deg/s), 16384 counts/g;
+PDF direct fetch failed, so no full PDF claimed read. Sources linked in report.
+Live configuration registers and scale accuracy were not checked. No firmware
+changes, package installation or live wheel trials in this task.
+
+Added InertialIntegrator/IntegrationAssessment in src/agent/integrate_imu.py.
+Gyro raw offset removed, trapezoidal angular increments composed as rotations;
+acceleration transformed into initial sensor axes and stationary reference vector
+subtracted, then integrated to velocity increment and zero-initial-velocity
+displacement using exact piecewise-linear segment integration. Raw count-time
+integrals retained. Restricts to observed overlap; no startup extrapolation or
+end-velocity correction to force expected travel. Initial velocity/reference
+gravity-bias separation, sensor scales and acquisition times remain assumptions.
+Three timing hypotheses (request/midpoint/receipt) times two bias references
+assessed per trial. These scenario spans are not statistical error bounds.
+
+Computed 48 saved trials from logs/20261009003930548 and 20261009004129863.
+Initial output under analysis/20261009005347000-inertial-integration retained;
+final adds visualization and explanatory limit text under same name + -final.
+Input trial/event SHA256 recorded in integration.json; source data untouched.
+PWM80 full-turn group median nominal yaw left +15.328 deg/right -15.864 deg.
+Median residual velocity increment norm 0.2476 m/s conditional, despite later
+stable images: accel integration not validated travel. Median scenario yaw span
+0.243 deg and displacement-component-span norm 0.0373 m; these omit unknown
+calibration/initial-condition/aliasing errors. Final PNG visually inspected.
+
+Added GyroBiasCalibrator in gyro_bias.py: five paired samples and image flow;
+require >=20 valid tracks, median <=1 px, p95 <=3 px, gyro std <=50 raw counts,
+accel std <=300 counts per axis. Provisional gates support rest, not proof.
+run_calibration.ps1 adds GyroCalibrationOnly; runner logs fresh bias and stores
+it per trial, rejects age >10 s, retains N1<7.0 V guard. integrate_imu consumes
+the per-trial bias when available. Firmware offset/startup calibration unchanged.
+
+Live stationary-only run 20261009005954541 exited 0, accepted bias
+[-359.8,62.6,250.2] raw counts with N1 7.857 V. Camera/IMU gate accepted;
+N100 cleanup and disconnect recorded. No N4 sent. Full wheel path with refresh
+not live tested. Added six analytical tests (constant/ramp accel, bias/gravity
+rest, rotation/gravity, support overlap and invalid times) and four bias-gate
+tests; existing three battery tests retained. Initial gravity test encountered
+SciPy Euler shape API mismatch; fixed Nx1 input, all 13 tests passed. Offline
+integration exited 0; Python base-path warning seen once but no failure.
+Procedure/results/handoff updated; git diff --check passed.
+
+# October 9, 01:06–01:22: observation-driven improvements and bounded pilot
+
+User requested solving calibration problems and allowed continued improvements
+during exploration. Used existing safe-area assumption for short calibration
+and local observation pilot only; no room-scale search or firmware modifications.
+No dependency installs, subagents, commit/push or unrelated file changes.
+
+Added TimedCameraRecorder (timed_camera.py): one HTTP-only worker, <=60 frames,
+1.5 s request/2 MB JPEG bounds, monotonic/UTC brackets and nested frame manifest.
+The sole TCP owner samples IMU one second before N4 through 1.6 s after host
+N100. Requires two pre-motion frames; camera faults refuse/stop motion; all
+exceptions send N100 before waiting for worker shutdown. Data gaps/exposure
+timestamps remain unknown. Wrapper accepts TimedCamera/Repeats/TurnOnly/ImuPlan.
+
+Added MotionValidation (validate_motion.py): raw/bias-corrected integration,
+pre/post camera/IMU rest support, first-repeat scene-specific pixel/nominal-degree
+fit and later-repeat held-out comparisons. Conditional rest-constrained constant
+acceleration correction removes endpoint velocity residual only when both gates
+pass; unconstrained trace preserved. This imposed endpoint is not independent
+velocity measurement, distance validation or control odometry.
+
+Runs in data/20261009003013000, Exploration calibration:
+- 20261009010738515: camera p95 3.210 px >3 threshold; movement refused, no N4.
+- 20261009010822507: six PWM60/T200 timed trials, then three bias-image rejections
+  (medians0.206–0.258 px but p95 3.411–4.666). Quiet gyro/accel; N100 cleanup.
+  Partial run and failed/rejected evidence retained; offline validation exited0.
+- Updated image gate with robust partial-affine RANSAC (1 px residual), >=70%
+  coherent support spanning25% width/height. Retains raw tracking statistics,
+  applies original1px median/3px p95 to coherent tracks. Not simple threshold
+  relaxation. Synthetic translated-image check rejects real coherent movement;
+  corrupted-patch check preserves broad stationary support. Rest remains inferred.
+- 20261009011141154: complete16 PWM60/T200 trials; camera/IMU rest support
+  pre16/post15. Gyro/accel median gaps~93–101ms. Four held-out turns had median
+  nominal vision/gyro discrepancy5.637deg; do not trust that heading model.
+- 20261009011637215: implemented bounded_exploration.py subclass and PowerShell
+  entry; exactly three forwardPWM60/T200 pulses (600ms total). Per-step bias,
+  battery and timed recording; >20% shorter successive raw echo stop gate.
+  Echo pairs12399/12312,12305/12060,12071/11918us. No power/turn/reverse increase.
+  All3 pre/post rest supported. observations.json uses null metric position and
+  false free-space verification. This is a local observation pilot, not room search.
+- 20261009011850801: eight gyro-focused turn trials; gyro favored through turn
+  and300ms after stop. Active gyro median gaps49.37–58.90ms,8–12 active samples
+  versus sparse alternating data. Pre/post rest8/8; four held-out comparisons
+  median0.588nominal deg. Small scene-specific consistency result, not absolute
+  accuracy or a controlled causal comparison. Adaptive mode now applies this
+  allocation to turns only, alternating at rest and during translations. Focus
+  allocation means sparse in-motion accel; not suitable for dead reckoning.
+- 20261009012243615: final stopped BatteryOnly read7.655V, N100 reply/close.
+
+Full-run and pilot validation outputs under matching analysis/<run>-validation.
+Integration of new16+pilot3 under analysis/20261009011637215-integration exited0:
+median residual velocity increment norm0.2283m/s conditional. Drift persists;
+endpoint-constrained values not used as measured travel. Final pilot/turn images
+visually inspected. Camera/IMU/battery/floor/ultrasound raw records preserved.
+
+Live full16/turn8/pilot3/battery check exited0; two refused/partial runs exited1.
+Offline validators/integration exited0. Eighteen unittest checks passed: earlier
+13 plus2 robust vision checks and3 pilot count/direction/power/duration/echo
+stop checks. Compilation/whitespace checks passed. Provisional echo-change gate
+is not calibrated clearance; floor thresholds/cliff protection, absolute scale,
+sensor timestamps/range readbacks, camera intrinsics, physical stopping distance
+and room coverage remain unestablished. README/procedure/results/handoff updated.
